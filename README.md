@@ -9,7 +9,7 @@ Then carefully trace the figure clockwise, returning to your start point.
 
 The areas calculated by tracing are slightly high, by about 0.3%.
 
-You can drag the tracer with the mouse or you can use the arrow keys to move 1 pixel at a time horizonatlly or vertically.
+You can drag the tracer with the mouse or you can use the arrow keys to move 1 pixel at a time horizontally or vertically.
 
 Hold the shift key down when you press the arrow keys to move 10 pixels at a time. This is much less accurate.
 
