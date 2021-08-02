@@ -1,0 +1,251 @@
+<html>
+<head>
+	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+
+	<style>
+		svg .draggable {cursor: move;  outline: none;}
+
+		body, svg text {font: normal 1em Verdana, Helvetica, Arial, sans-serif;}
+	</style>
+</head>
+
+<body>
+	<div style="width: 100%; margin: 0; padding: 0; display: inline-block; text-align: center;">
+		<svg id="svg" width="800" height="800" ></svg>
+	</div>
+</body>
+<script>
+	const SVG = $('#svg');
+
+	function svg(elem, attr) {
+	    let e = $(document.createElementNS('http://www.w3.org/2000/svg', elem));
+	    if (attr) e.attr(attr);
+	    return e;
+	}
+
+	SVG.append(svg('rect', {x: 50, y: 50, width: 250, height: 150, stroke: 'red', opacity: 0.2}));  // area 37_500 sq px
+	SVG.append(svg('rect', {x: 300, y: 300, width: 100, height: 200, stroke: 'red', opacity: 0.2})); // area 20_000 sq px
+	SVG.append(svg('rect', {x: 500, y: 300, width: 200, height: 100, stroke: 'red', opacity: 0.2})); // area 20_000 sq px
+	SVG.append(svg('circle', {cx: 650, cy: 150, r: 100, stroke: 'red', opacity: 0.2})); // area 31_416 sq px
+
+	function distancePointToLine(line, p0) { // signed
+		// https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
+		let num = (line.x2 - line.x1) * (line.y1 - p0.y) - (line.x1 - p0.x) * (line.y2 - line.y1);
+		return num / Math.hypot(line.x2 - line.x1, line.y2 - line.y1);
+	}
+
+	class Track {
+		constructor(item) {
+			this.q = [];
+		}
+
+		push(item) {
+			if      (this.q.length == 0) this.q.push(item);
+			else if (this.q.length == 2) this.q.shift();
+
+			this.q.push(item);
+		}
+
+		clear() {
+			this.q = [];
+		}
+	}
+
+	class TrackXY extends Track {
+		get dx() {
+			return this.q[1].x - this.q[0].x;
+		}
+
+		get dy() {
+			return this.q[1].y - this.q[0].y;
+		}
+	}
+
+	class Planimeter {
+		// https://www.tandfonline.com/doi/full/10.1080/07468342.2020.1702852
+		// http://whistleralley.com/planimeter/planimeter.htm
+
+		constructor() {
+			this.pole = new DraggableCircle('POLE', 'pole', {x: 400, y: 200, r: 220, stroke: 'blue', 'fill-opacity': 0.3, fill: '#BBBBEE'});
+
+			this.tracer = new DraggableCircle('TRACER', 'tracer', {x: 200, y: 400, r: 200, stroke: 'green', 'fill-opacity': 0.3, fill: '#BBEEBB'});
+
+			SVG.append(svg('circle', {cx: 0, cy: 0, r: 2.5, id: 'pivot'}));
+
+			SVG.append(svg('polyline', {id: 'arms', points: '0,0, 0,0', fill: 'none', stroke: 'red'}));
+
+			this.pivotTracer = new Track();
+
+			this.distanceRolled = 0;
+
+			this.linkage();
+		}
+
+		setTracerText(t) {
+			$('#TRACER').prev('circle').prev('text').text(t);
+		}
+
+		intersectionPoints() { // intersection points of POLE and TRACER circles
+			// https://www.petercollingridge.co.uk/tutorials/computational-geometry/circle-circle-intersections/
+			// http://www.ambrsoft.com/TrigoCalc/Circles2/circle2intersection/CircleCircleIntersection.htm
+
+		    const d = Math.hypot(this.pole.current.x - this.tracer.current.x, this.pole.current.y - this.tracer.current.y); // distance between centers
+
+		    let res = {d, intersect: false};
+
+			if (d > this.pole.r + this.tracer.r) return res; // too far apart
+
+			if (d < Math.abs(this.pole.r - this.tracer.r)) return res; // One circle completely inside the other
+
+			res.intersect = true;
+
+		    let dx = (this.tracer.current.x - this.pole.current.x) / d; // unit vectors for one center to the other
+		    let dy = (this.tracer.current.y - this.pole.current.y) / d;
+
+			// calculate where line through intersection points crosses line through centers
+			const a = (this.pole.r * this.pole.r - this.tracer.r * this.tracer.r + d * d) / (2 * d);
+			let px = this.pole.current.x + a * dx;
+			let py = this.pole.current.y + a * dy;
+
+			const h = Math.sqrt(this.pole.r * this.pole.r - a * a); // height of intersection line
+
+			// Calculate the intersection points by moving h units up and down from p,
+			// perpendicular to the line between the circle centers.
+			res['p1'] = {x: px + h * dy, y: py - h * dx};
+			res['p2'] = {x: px - h * dy, y: py + h * dx};
+
+			return res;
+		}
+
+		linkage() {
+			let intersect = this.intersectionPoints();
+
+			if (! intersect.intersect) {
+				$('#pivot, #arms').attr({display: 'none'});
+				return;
+			}
+
+			let ip = intersect.p1;
+
+			this.pivotTracer.push({x1: ip.x, y1: ip.y, x2: this.tracer.current.x, y2: this.tracer.current.y});
+
+			this.calculateRoll();
+
+			$('#pivot').attr({cx: ip.x, cy: ip.y, display: 'visible'});
+			$('#arms').attr({points: `${this.pole.current.x},${this.pole.current.y}  ${ip.x},${ip.y}  ${this.tracer.current.x},${this.tracer.current.y}`, display: 'visible'});
+		}
+
+		calculateRoll() {
+			let [prev, curr] = this.pivotTracer.q; // previous and current x1,y1 for pivot and x2,y2 for tracer
+
+			let d = distancePointToLine(prev, {x: curr.x1, y: curr.y1});
+
+			this.distanceRolled -= d;
+
+			let d2 = this.distanceRolled * this.tracer.r;
+
+			this.setTracerText(`tracer: ${d2.toFixed(2)} sq px`)
+		}
+	}
+
+	class DraggableCircle {
+
+		static MOUSE_DOWN = false;
+		static LABEL_LEAD = 7;
+
+		mouseMove(event) {
+			if (! DraggableCircle.MOUSE_DOWN) return;
+			if (event.which != 1) return;
+
+			let sel = $('#' + event.target.id);
+			let instance = sel.data('instance');
+
+			let change = instance.mouseTrack;
+			change.push({x: event.offsetX, y: event.offsetY});
+
+			let currentPos  = {x: parseFloat(sel.attr('cx')), y: parseFloat(sel.attr('cy'))};
+
+			let newPos = {cx: currentPos.x + change.dx, cy: currentPos.y + change.dy};
+
+			instance.move(sel, newPos);
+		}
+
+		mouseUp(event) {
+			DraggableCircle.MOUSE_DOWN = false;
+			$('#' + event.target.id).off().data('instance').mouseMove(event);
+			return false;
+		}
+
+		constructor(id, text, params) {
+			this.id = id;
+			this.r = params.r;
+			this.current = {x: params.x, y: params.y};
+			this.mouseTrack = new TrackXY();
+
+			SVG.append(svg('text', {x: params.x + DraggableCircle.LABEL_LEAD, y: params.y, style: 'font-size: smaller;'}).text(text));
+			SVG.append(svg('circle', {cx: params.x, cy: params.y, r: 5, fill: 'orange', opacity: 0.4}));
+			SVG.append(svg('circle', Object.assign({cx: params.x, cy: params.y, id, class: 'draggable', tabindex: 0}, params)));
+
+			let sel = '#' + id;
+
+			$(sel).data('instance', this);
+			let self = this;
+
+			SVG.on('mousedown', sel, function(event) {
+				DraggableCircle.MOUSE_DOWN = true;
+				self.mouseTrack.clear();
+				SVG.on('mousemove',  sel, self.mouseMove);
+				SVG.on('mouseup',    sel, self.mouseUp);
+			})
+		}
+
+		move(sel, newPos) {
+			sel.attr(newPos);
+			sel.prev('circle').attr(newPos);
+			sel.prev('circle').prev('text').attr({x: newPos.cx + DraggableCircle.LABEL_LEAD, y: newPos.cy});
+
+			this.current = {x: newPos.cx, y: newPos.cy};
+
+			PLANIMETER.linkage();
+		}
+	}
+
+	const PLANIMETER = new Planimeter();
+
+	$(document).on('keypress keydown', '.draggable', handleKey);
+
+	function handleKey(event) {
+		if (['z', 'Z', '0'].includes(event.key)) {
+			PLANIMETER.distanceRolled = 0;
+			PLANIMETER.setTracerText('tracer: 0 sq px')
+			return;
+		}
+
+		let dy = dx = 0;
+
+		if      (event.key == 'ArrowUp')    dy = -1;
+		else if (event.key == 'ArrowDown')  dy = +1;
+		else if (event.key == 'ArrowLeft')  dx = -1;
+		else if (event.key == 'ArrowRight') dx = +1;
+		else return;
+
+		event.preventDefault();
+
+		if (event.shiftKey) {
+			dy *= 10;
+			dx *= 10;
+		}
+
+		let sel = $('#' + $(this).attr('id'));
+		let instance = sel.data('instance');
+
+		instance.move(sel, {cx: dx + parseFloat($(this).attr('cx')), cy: dy + parseFloat($(this).attr('cy'))});
+	}
+
+	function moveTracer(x, y) {
+		PLANIMETER.tracer.move($('#TRACER'), {cx: x, cy: y});
+	}
+
+</script>
+
+</html>
