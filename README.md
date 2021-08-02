@@ -7,7 +7,7 @@ Position the Pole (drag with the mouse) so that the tracer can reach all the poi
 Carefully position the tracer on the edge of the figure and zero the area by pressing z, Z or 0.
 Then carefully trace the figure clockwise, returning to your start point.
 
-The areas calculated by tracing are slightly high, by about 0.3%.
+The areas calculated by tracing are reasonably accurate, out by about +/- 0.5%.
 
 You can drag the tracer with the mouse or you can use the arrow keys to move 1 pixel at a time horizontally or vertically.
 
