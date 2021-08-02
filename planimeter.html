@@ -23,10 +23,10 @@
 	    return e;
 	}
 
-	SVG.append(svg('rect', {x: 50, y: 50, width: 250, height: 150, stroke: 'red', opacity: 0.2}));  // area 37_500 sq px
-	SVG.append(svg('rect', {x: 300, y: 300, width: 100, height: 200, stroke: 'red', opacity: 0.2})); // area 20_000 sq px
-	SVG.append(svg('rect', {x: 500, y: 300, width: 200, height: 100, stroke: 'red', opacity: 0.2})); // area 20_000 sq px
-	SVG.append(svg('circle', {cx: 650, cy: 150, r: 100, stroke: 'red', opacity: 0.2})); // area 31_416 sq px
+	SVG.append(svg('rect', {x: 50, y: 50, width: 250, height: 150, 'stroke-width': 0, opacity: 0.2}));  // area 37_500 sq px
+	SVG.append(svg('rect', {x: 300, y: 300, width: 100, height: 200, 'stroke-width': 0, opacity: 0.2})); // area 20_000 sq px
+	SVG.append(svg('rect', {x: 500, y: 300, width: 200, height: 100, 'stroke-width': 0, opacity: 0.2})); // area 20_000 sq px
+	SVG.append(svg('circle', {cx: 650, cy: 150, r: 100, 'stroke-width': 0, opacity: 0.2})); // area 31_416 sq px
 
 	function distancePointToLine(line, p0) { // signed
 		// https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
@@ -72,7 +72,7 @@
 
 			SVG.append(svg('circle', {cx: 0, cy: 0, r: 2.5, id: 'pivot'}));
 
-			SVG.append(svg('polyline', {id: 'arms', points: '0,0, 0,0', fill: 'none', stroke: 'red'}));
+			SVG.append(svg('polyline', {id: 'arms', points: '0,0, 0,0', fill: 'none', stroke: 'red', 'stroke-width': 1, opacity: 0.3}));
 
 			this.pivotTracer = new Track();
 
