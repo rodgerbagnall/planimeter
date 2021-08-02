@@ -1,16 +1,20 @@
 # planimeter
 Javascript and SVG planimeter emulation.
 
-A few rectangles and a circle are drawn so that you can trace them. Their areas in square pixels are 37,500, 20,000 and 31,416.
+Three rectangles and one circle are drawn so that you can trace them. Their areas in square pixels are 37,500, 20,000 and 31,416.
 
-Position the Pole conveniently, position the tracer on the figure (zero the area by pressing z, Z or 0) and then trace the figure with the tracer, clockwise.
+Position the Pole (drag with the mouse) so that the tracer can reach all the points in the figure you want to measure.
+Carefully position the tracer on the edge of the figure and zero the area by pressing z, Z or 0.
+Then carefully trace the figure clockwise, returning to your start point.
 
-The areas calculated by tracing are slightly high, by about 0.3%. .
+The areas calculated by tracing are slightly high, by about 0.3%.
 
-You can move the tracer using the arrow keys, 1 px at a time. Hold the shift key down to move 10 px at a time. Moving 10 px at a time is less accurate.
+You can drag the tracer with the mouse or you can use the arrow keys to move 1 pixel at a time horizonatlly or vertically.
 
-Currently, you only set the tracer arm length in the code.
+Hold the shift key down when you press the arrow keys to move 10 pixels at a time. This is much less accurate.
 
-# Reference
+Currently, you can only set the tracer arm length in the code.
+
+# References
 * http://whistleralley.com/planimeter/planimeter.htm
 * http://www.math.ucsd.edu/~jeggers/Resources/planimeter_slides.pdf Page 5
