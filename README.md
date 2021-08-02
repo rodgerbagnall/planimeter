@@ -1,0 +1,2 @@
+# planimeter
+Javascript planimeter emulation
