@@ -15,6 +15,8 @@ Hold the shift key down when you press the arrow keys to move 10 pixels at a tim
 
 Currently, you can only set the tracer arm length in the code.
 
+Via githack: https://raw.githack.com/rodgerbagnall/planimeter/main/planimeter.html
+
 # References
 * http://whistleralley.com/planimeter/planimeter.htm
 * http://www.math.ucsd.edu/~jeggers/Resources/planimeter_slides.pdf Page 5
