@@ -23,9 +23,10 @@
 	    return e;
 	}
 
-	SVG.append(svg('rect', {x: 50, y: 50, width: 250, height: 150, 'stroke-width': 0, opacity: 0.2}));  // area 37_500 sq px
-	SVG.append(svg('rect', {x: 300, y: 300, width: 100, height: 200, 'stroke-width': 0, opacity: 0.2})); // area 20_000 sq px
-	SVG.append(svg('rect', {x: 500, y: 300, width: 200, height: 100, 'stroke-width': 0, opacity: 0.2})); // area 20_000 sq px
+	SVG.append(svg('rect', {x: 70, y: 100, width: 600, height: 500, 'stroke-width': 0, fill: 'yellow', opacity: 0.5}));  // area 300_000 sq px
+	SVG.append(svg('rect', {x: 50, y: 50, width: 250, height: 150, 'stroke-width': 0, fill: 'blue', opacity: 0.2}));  // area 37_500 sq px
+	SVG.append(svg('rect', {x: 300, y: 300, width: 100, height: 200, 'stroke-width': 0, fill: 'salmon', opacity: 0.2})); // area 20_000 sq px
+	SVG.append(svg('rect', {x: 500, y: 300, width: 200, height: 100, 'stroke-width': 0, fill: 'salmon', opacity: 0.2})); // area 20_000 sq px
 	SVG.append(svg('circle', {cx: 650, cy: 150, r: 100, 'stroke-width': 0, opacity: 0.2})); // area 31_416 sq px
 
 	function distancePointToLine(line, p0) { // signed
@@ -79,6 +80,10 @@
 			this.distanceRolled = 0;
 
 			this.linkage();
+
+			this.C = Math.PI * (this.pole.r ** 2 + this.tracer.r ** 2);
+
+			$('#POLE').prev('circle').prev('text').text(`pole, C=${this.C.toFixed(1)}`);
 		}
 
 		setTracerText(t) {
