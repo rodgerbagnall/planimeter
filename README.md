@@ -5,6 +5,8 @@ Four rectangles and one circle are drawn so that you can trace them. The largest
 the other blue rectangle is 37,500 square units, the two smaller
 salmon rectangles are each 20,000 square units and the circle is 31,416 square units.
 
+If you use the 'Interior Pole method' (e.g. to trace the large yelow rectangle with the pole inside it), the constant C is shown at the pole.
+
 The areas calculated by tracing are reasonably close.
 
 Position the Pole (drag it with the mouse) so that the tracer can reach all the points in the figure you want to measure.
@@ -16,8 +18,6 @@ You can drag the tracer with the mouse or you can use the arrow keys to move 1 p
 Hold the shift key down when you press the arrow keys to move 10 pixels at a time. This is much less accurate.
 
 Currently, you can only set the tracer arm length by editing the code.
-
-If you use the 'Interior Pole method' (e.g. to trace the large yelow rectangle with the pole inside it), the constant C is shown at the pole.
 
 View the HTML via githack: https://raw.githack.com/rodgerbagnall/planimeter/main/planimeter.html
 

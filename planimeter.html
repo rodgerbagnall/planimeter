@@ -23,10 +23,10 @@
 	    return e;
 	}
 
-	SVG.append(svg('rect', {x: 70, y: 100, width: 600, height: 500, 'stroke-width': 0, fill: 'yellow', opacity: 0.5}));  // area 300_000 sq px
-	SVG.append(svg('rect', {x: 50, y: 50, width: 250, height: 150, 'stroke-width': 0, fill: 'blue', opacity: 0.2}));  // area 37_500 sq px
-	SVG.append(svg('rect', {x: 300, y: 300, width: 100, height: 200, 'stroke-width': 0, fill: 'salmon', opacity: 0.2})); // area 20_000 sq px
-	SVG.append(svg('rect', {x: 500, y: 300, width: 200, height: 100, 'stroke-width': 0, fill: 'salmon', opacity: 0.2})); // area 20_000 sq px
+	SVG.append(svg('rect', {x: 70, y: 100, width: 600, height: 500, 'stroke-width': 0, fill: 'yellow', opacity: 0.5}));  // area 300_000 sq units
+	SVG.append(svg('rect', {x: 50, y: 50, width: 250, height: 150, 'stroke-width': 0, fill: 'blue', opacity: 0.2}));  // area 37_500 sq units
+	SVG.append(svg('rect', {x: 300, y: 300, width: 100, height: 200, 'stroke-width': 0, fill: 'salmon', opacity: 0.2})); // area 20_000 sq units
+	SVG.append(svg('rect', {x: 500, y: 300, width: 200, height: 100, 'stroke-width': 0, fill: 'salmon', opacity: 0.2})); // area 20_000 sq units
 	SVG.append(svg('circle', {cx: 650, cy: 150, r: 100, 'stroke-width': 0, opacity: 0.2})); // area 31_416 sq px
 
 	function distancePointToLine(line, p0) { // signed
@@ -149,7 +149,7 @@
 
 			let d2 = this.distanceRolled * this.tracer.r;
 
-			this.setTracerText(`tracer: ${d2.toFixed(2)} sq px`)
+			this.setTracerText(`tracer: ${d2.toFixed(2)} sq units`)
 		}
 	}
 
@@ -222,7 +222,7 @@
 	function handleKey(event) {
 		if (['z', 'Z', '0'].includes(event.key)) {
 			PLANIMETER.distanceRolled = 0;
-			PLANIMETER.setTracerText('tracer: 0 sq px')
+			PLANIMETER.setTracerText('tracer: 0 sq units')
 			return;
 		}
 
