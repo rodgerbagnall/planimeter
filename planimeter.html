@@ -196,11 +196,11 @@
 			$(sel).data('instance', this);
 			let self = this;
 
-			SVG.on('mousedown', sel, function(event) {
+			SVG.on('mousedown touchstart', sel, function(event) {
 				DraggableCircle.MOUSE_DOWN = true;
 				self.mouseTrack.clear();
-				SVG.on('mousemove',  sel, self.mouseMove);
-				SVG.on('mouseup',    sel, self.mouseUp);
+				SVG.on('mousemove touchmove',  sel, self.mouseMove);
+				SVG.on('mouseup touchend touchcancel',    sel, self.mouseUp);
 			})
 		}
 
