@@ -1,6 +1,7 @@
 <html>
 <head>
 	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
 
 	<style>
 		svg .draggable {cursor: move;  outline: none;}
@@ -15,6 +16,9 @@
 	</div>
 </body>
 <script>
+
+$(document).ready(function(){
+
 	const SVG = $('#svg');
 
 	function svg(elem, attr) {
@@ -35,7 +39,7 @@
 		return num / Math.hypot(line.x2 - line.x1, line.y2 - line.y1);
 	}
 
-	class Track {
+	class Tracker {
 		constructor(item) {
 			this.q = [];
 		}
@@ -52,7 +56,7 @@
 		}
 	}
 
-	class TrackXY extends Track {
+	class TrackerXY extends Tracker {
 		get dx() {
 			return this.q[1].x - this.q[0].x;
 		}
@@ -75,15 +79,22 @@
 
 			SVG.append(svg('polyline', {id: 'arms', points: '0,0, 0,0', fill: 'none', stroke: 'red', 'stroke-width': 1, opacity: 0.3}));
 
-			this.pivotTracer = new Track();
+			this.tracerArmTracker = new Tracker();
 
-			this.distanceRolled = 0;
+			this.zeroise();
 
 			this.linkage();
 
 			this.C = Math.PI * (this.pole.r ** 2 + this.tracer.r ** 2);
 
 			$('#POLE').prev('circle').prev('text').text(`pole, C=${this.C.toFixed(1)}`);
+		}
+
+
+		zeroise() {
+			this.distanceRolled = 0;
+			this.setTracerText('tracer: 0 sq units')
+			return;
 		}
 
 		setTracerText(t) {
@@ -132,7 +143,7 @@
 
 			let ip = intersect.p1;
 
-			this.pivotTracer.push({x1: ip.x, y1: ip.y, x2: this.tracer.current.x, y2: this.tracer.current.y});
+			this.tracerArmTracker.push({x1: ip.x, y1: ip.y, x2: this.tracer.current.x, y2: this.tracer.current.y});
 
 			this.calculateRoll();
 
@@ -141,51 +152,25 @@
 		}
 
 		calculateRoll() {
-			let [prev, curr] = this.pivotTracer.q; // previous and current x1,y1 for pivot and x2,y2 for tracer
+			let [prev, curr] = this.tracerArmTracker.q; // previous and current x1,y1 for pivot and x2,y2 for tracer
 
 			let d = distancePointToLine(prev, {x: curr.x1, y: curr.y1});
 
-			this.distanceRolled -= d;
+			this.distanceRolled -= d * this.tracer.r;
 
-			let d2 = this.distanceRolled * this.tracer.r;
-
-			this.setTracerText(`tracer: ${d2.toFixed(2)} sq units`)
+			this.setTracerText(`tracer: ${this.distanceRolled.toFixed(2)} sq units`)
 		}
 	}
 
 	class DraggableCircle {
 
-		static MOUSE_DOWN = false;
 		static LABEL_LEAD = 7;
-
-		mouseMove(event) {
-			if (! DraggableCircle.MOUSE_DOWN) return;
-			if (event.which != 1) return;
-
-			let sel = $('#' + event.target.id);
-			let instance = sel.data('instance');
-
-			let change = instance.mouseTrack;
-			change.push({x: event.offsetX, y: event.offsetY});
-
-			let currentPos  = {x: parseFloat(sel.attr('cx')), y: parseFloat(sel.attr('cy'))};
-
-			let newPos = {cx: currentPos.x + change.dx, cy: currentPos.y + change.dy};
-
-			instance.move(sel, newPos);
-		}
-
-		mouseUp(event) {
-			DraggableCircle.MOUSE_DOWN = false;
-			$('#' + event.target.id).off().data('instance').mouseMove(event);
-			return false;
-		}
 
 		constructor(id, text, params) {
 			this.id = id;
 			this.r = params.r;
 			this.current = {x: params.x, y: params.y};
-			this.mouseTrack = new TrackXY();
+			this.moveTrack = new TrackerXY();
 
 			SVG.append(svg('text', {x: params.x + DraggableCircle.LABEL_LEAD, y: params.y, style: 'font-size: smaller;'}).text(text));
 			SVG.append(svg('circle', {cx: params.x, cy: params.y, r: 5, fill: 'orange', opacity: 0.4}));
@@ -196,12 +181,6 @@
 			$(sel).data('instance', this);
 			let self = this;
 
-			SVG.on('mousedown touchstart', sel, function(event) {
-				DraggableCircle.MOUSE_DOWN = true;
-				self.mouseTrack.clear();
-				SVG.on('mousemove touchmove',  sel, self.mouseMove);
-				SVG.on('mouseup touchend touchcancel',    sel, self.mouseUp);
-			})
 		}
 
 		move(sel, newPos) {
@@ -217,12 +196,13 @@
 
 	const PLANIMETER = new Planimeter();
 
+
+
 	$(document).on('keypress keydown', '.draggable', handleKey);
 
 	function handleKey(event) {
 		if (['z', 'Z', '0'].includes(event.key)) {
-			PLANIMETER.distanceRolled = 0;
-			PLANIMETER.setTracerText('tracer: 0 sq units')
+			PLANIMETER.zeroise();
 			return;
 		}
 
@@ -247,9 +227,28 @@
 		instance.move(sel, {cx: dx + parseFloat($(this).attr('cx')), cy: dy + parseFloat($(this).attr('cy'))});
 	}
 
-	function moveTracer(x, y) {
+	function goto(x, y) {
 		PLANIMETER.tracer.move($('#TRACER'), {cx: x, cy: y});
 	}
+
+	function calc() {
+		return PLANIMETER.C + PLANIMETER.distanceRolled;
+	}
+
+	interact('.draggable').draggable({
+		listeners: {
+			move(event) {
+				let sel = $('#' + event.target.id);
+				let cx = parseFloat(sel.attr('cx') || sel.attr('x')) + event.dx;
+				let cy = parseFloat(sel.attr('cy') || sel.attr('y')) + event.dy;
+				if (event.target.id == 'TRACER') PLANIMETER.tracer.move(sel, {cx, cy});
+				else PLANIMETER.pole.move(sel, {cx, cy});
+			}
+		}
+	});
+
+
+});
 
 </script>
 
