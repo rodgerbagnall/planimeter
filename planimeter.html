@@ -1,12 +1,20 @@
 <html>
 <head>
 	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.js"></script>
 
 	<style>
-		svg .draggable {cursor: move;  outline: none;}
+		.draggable {
+			outline: none;
+		}
 
-		body, svg text {font: normal 1em Verdana, Helvetica, Arial, sans-serif;}
+		svg {
+			touch-action: none;
+		}
+
+		body, svg text {
+			font: normal 1em Verdana, Helvetica, Arial, sans-serif;
+		}
 	</style>
 </head>
 
@@ -17,8 +25,6 @@
 </body>
 <script>
 
-$(document).ready(function(){
-
 	const SVG = $('#svg');
 
 	function svg(elem, attr) {
@@ -27,11 +33,11 @@ $(document).ready(function(){
 	    return e;
 	}
 
-	SVG.append(svg('rect', {x: 70, y: 100, width: 600, height: 500, 'stroke-width': 0, fill: 'yellow', opacity: 0.5}));  // area 300_000 sq units
-	SVG.append(svg('rect', {x: 50, y: 50, width: 250, height: 150, 'stroke-width': 0, fill: 'blue', opacity: 0.2}));  // area 37_500 sq units
-	SVG.append(svg('rect', {x: 300, y: 300, width: 100, height: 200, 'stroke-width': 0, fill: 'salmon', opacity: 0.2})); // area 20_000 sq units
-	SVG.append(svg('rect', {x: 500, y: 300, width: 200, height: 100, 'stroke-width': 0, fill: 'salmon', opacity: 0.2})); // area 20_000 sq units
-	SVG.append(svg('circle', {cx: 650, cy: 150, r: 100, 'stroke-width': 0, opacity: 0.2})); // area 31_416 sq px
+	SVG.append(svg('rect', {id: 'r1', x: 70, y: 100, width: 600, height: 500, 'stroke-width': 0, fill: 'yellow', opacity: 0.5}));  // area 300_000 sq units
+	SVG.append(svg('rect', {id: 'r2', x: 50, y: 50, width: 250, height: 150, 'stroke-width': 0, fill: 'blue', opacity: 0.2}));  // area 37_500 sq units
+	SVG.append(svg('rect', {id: 'r3', x: 300, y: 300, width: 100, height: 200, 'stroke-width': 0, fill: 'salmon', opacity: 0.2})); // area 20_000 sq units
+	SVG.append(svg('rect', {id: 'r4', x: 500, y: 300, width: 200, height: 100, 'stroke-width': 0, fill: 'salmon', opacity: 0.2})); // area 20_000 sq units
+	SVG.append(svg('circle', {id: 'c1', cx: 650, cy: 150, r: 100, 'stroke-width': 0, opacity: 0.2})); // area 31_416 sq px
 
 	function distancePointToLine(line, p0) { // signed
 		// https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
@@ -71,9 +77,9 @@ $(document).ready(function(){
 		// http://whistleralley.com/planimeter/planimeter.htm
 
 		constructor() {
-			this.pole = new DraggableCircle('POLE', 'pole', {x: 400, y: 200, r: 220, stroke: 'blue', 'fill-opacity': 0.3, fill: '#BBBBEE'});
+			this.pole = new DraggableCircle('POLE', 'pole', {cx: 400, cy: 200, r: 220, stroke: 'blue', 'fill-opacity': 0.3, fill: '#BBBBEE'});
 
-			this.tracer = new DraggableCircle('TRACER', 'tracer', {x: 200, y: 400, r: 200, stroke: 'green', 'fill-opacity': 0.3, fill: '#BBEEBB'});
+			this.tracer = new DraggableCircle('TRACER', 'tracer', {cx: 200, cy: 400, r: 200, stroke: 'green', 'fill-opacity': 0.3, fill: '#BBEEBB'});
 
 			SVG.append(svg('circle', {cx: 0, cy: 0, r: 2.5, id: 'pivot'}));
 
@@ -87,7 +93,10 @@ $(document).ready(function(){
 
 			this.C = Math.PI * (this.pole.r ** 2 + this.tracer.r ** 2);
 
-			$('#POLE').prev('circle').prev('text').text(`pole, C=${this.C.toFixed(1)}`);
+			$(this.pole.text).text(`pole, C=${this.C.toFixed(1)}`);
+
+
+
 		}
 
 
@@ -169,26 +178,31 @@ $(document).ready(function(){
 		constructor(id, text, params) {
 			this.id = id;
 			this.r = params.r;
-			this.current = {x: params.x, y: params.y};
+			this.current = {x: params.cx, y: params.cy};
 			this.moveTrack = new TrackerXY();
 
-			SVG.append(svg('text', {x: params.x + DraggableCircle.LABEL_LEAD, y: params.y, style: 'font-size: smaller;'}).text(text));
-			SVG.append(svg('circle', {cx: params.x, cy: params.y, r: 5, fill: 'orange', opacity: 0.4}));
-			SVG.append(svg('circle', Object.assign({cx: params.x, cy: params.y, id, class: 'draggable', tabindex: 0}, params)));
+			this.text = svg('text', {x: params.cx + DraggableCircle.LABEL_LEAD, y: params.cy, style: 'font-size: smaller;'}).text(text);
 
-			let sel = '#' + id;
+			this.small = svg('circle', {cx: params.cx, cy: params.cy, r: 5, fill: 'orange', opacity: 0.4});
 
-			$(sel).data('instance', this);
-			let self = this;
+			this.large = svg('circle', Object.assign({id, class: 'draggable', tabindex: 0}, params));
 
+			SVG.append(this.text);
+			SVG.append(this.small);
+			SVG.append(this.large);
+
+			$(this.large).data('instance', this);
 		}
 
-		move(sel, newPos) {
-			sel.attr(newPos);
-			sel.prev('circle').attr(newPos);
-			sel.prev('circle').prev('text').attr({x: newPos.cx + DraggableCircle.LABEL_LEAD, y: newPos.cy});
+		move(dx, dy) {
+			let newX = this.current.x + dx;
+			let newY = this.current.y + dy;
 
-			this.current = {x: newPos.cx, y: newPos.cy};
+			$(this.large).attr({cx: newX, cy: newY});
+			$(this.small).attr({cx: newX, cy: newY});
+			$(this.text).attr({x: newX + DraggableCircle.LABEL_LEAD, y: newY});
+
+			this.current = {x: newX, y: newY};
 
 			PLANIMETER.linkage();
 		}
@@ -198,9 +212,9 @@ $(document).ready(function(){
 
 
 
-	$(document).on('keypress keydown', '.draggable', handleKey);
+	$(document).on('keypress keydown', '.draggable', keyHandler);
 
-	function handleKey(event) {
+	function keyHandler(event) {
 		if (['z', 'Z', '0'].includes(event.key)) {
 			PLANIMETER.zeroise();
 			return;
@@ -223,32 +237,86 @@ $(document).ready(function(){
 
 		let sel = $('#' + $(this).attr('id'));
 		let instance = sel.data('instance');
-
-		instance.move(sel, {cx: dx + parseFloat($(this).attr('cx')), cy: dy + parseFloat($(this).attr('cy'))});
-	}
-
-	function goto(x, y) {
-		PLANIMETER.tracer.move($('#TRACER'), {cx: x, cy: y});
+		instance.move(dx, dy);
 	}
 
 	function calc() {
 		return PLANIMETER.C + PLANIMETER.distanceRolled;
 	}
 
-	interact('.draggable').draggable({
-		listeners: {
-			move(event) {
-				let sel = $('#' + event.target.id);
-				let cx = parseFloat(sel.attr('cx') || sel.attr('x')) + event.dx;
-				let cy = parseFloat(sel.attr('cy') || sel.attr('y')) + event.dy;
-				if (event.target.id == 'TRACER') PLANIMETER.tracer.move(sel, {cx, cy});
-				else PLANIMETER.pole.move(sel, {cx, cy});
-			}
+	function dragHandler(event) {
+		let sel = $('#' + event.target.id);
+		let instance = sel.data('instance');
+		instance.move(event.dx, event.dy);
+	}
+
+	interact('.draggable').draggable({listeners: {move: dragHandler}});
+
+	interact('#TRACER').on('doubletap', event => PLANIMETER.zeroise());
+
+	function goto(x, y) {
+		let t = PLANIMETER.tracer;
+
+		t.move(x - t.current.x, y - t.current.y);
+	}
+
+
+	function traceRect(id) {
+		if ($(id)[0].localName != 'rect') return;
+
+		let x  = parseFloat($(id).attr('x'))
+		let y  = parseFloat($(id).attr('y'))
+		let h  = parseFloat($(id).attr('height'))
+		let w  = parseFloat($(id).attr('width'))
+
+		console.log(id, x, y, h, w)
+
+		goto(x, y)
+
+		PLANIMETER.zeroise()
+
+		let delta = 0.01
+		let tx = x;
+		let ty = y;
+
+		for (; tx <= x + w; tx += delta) { // top, left to rright
+			goto(tx, ty)
 		}
-	});
 
+		for (; ty <= y + h; ty += delta) { // rhs, top to bottom
+			goto(tx, ty)
+		}
 
-});
+		for (; tx >= x; tx -= delta) {// bottom, right to left
+			goto(tx, ty)
+		}
+
+		for (; ty >= y; ty -= delta) {// lhs, bottom to top
+			goto(tx, ty)
+		}
+
+		console.log(`got ${PLANIMETER.distanceRolled.toFixed(2)}, expected ${(h * w).toFixed(2)}`)
+	}
+
+	function traceCircle(id) {
+		if ($(id)[0].localName != 'circle') return;
+
+		let cx  = parseFloat($(id).attr('cx'))
+		let cy  = parseFloat($(id).attr('cy'))
+		let r   = parseFloat($(id).attr('r'))
+
+		console.log(id, cx, cy, r)
+
+		goto(cx - r, cy)
+
+		PLANIMETER.zeroise()
+
+		for (let theta = 0; theta <= 2 * Math.PI; theta += 0.001) {
+			goto(cx - r * Math.cos(theta), cy - r * Math.sin(theta))
+		}
+
+		console.log(`got ${PLANIMETER.distanceRolled.toFixed(2)}, expected ${(Math.PI * r * r).toFixed(2)}`)
+	}
 
 </script>
 
