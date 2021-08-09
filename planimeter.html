@@ -260,16 +260,19 @@
 		t.move(x - t.current.x, y - t.current.y);
 	}
 
+	function trace(id) {
+		let localName = $(id)[0].localName;
+		if (localName == 'rect') traceRect(id);
+		else if (localName == 'circle') traceCircle(id);
+		else console.err(`can only trace rectangles or circles, not ${localName}s`);
+	}
+
 
 	function traceRect(id) {
-		if ($(id)[0].localName != 'rect') return;
-
 		let x  = parseFloat($(id).attr('x'))
 		let y  = parseFloat($(id).attr('y'))
 		let h  = parseFloat($(id).attr('height'))
 		let w  = parseFloat($(id).attr('width'))
-
-		console.log(id, x, y, h, w)
 
 		goto(x, y)
 
@@ -299,13 +302,9 @@
 	}
 
 	function traceCircle(id) {
-		if ($(id)[0].localName != 'circle') return;
-
 		let cx  = parseFloat($(id).attr('cx'))
 		let cy  = parseFloat($(id).attr('cy'))
 		let r   = parseFloat($(id).attr('r'))
-
-		console.log(id, cx, cy, r)
 
 		goto(cx - r, cy)
 
