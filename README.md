@@ -1,9 +1,7 @@
 # planimeter
 Javascript and SVG planimeter emulation.
 
-Four rectangles and one circle are drawn so that you can trace them. The largest yelllow rectangle is 300,000 sq units,
-the other blue rectangle is 37,500 square units, the two smaller
-salmon rectangles are each 20,000 square units and the circle is 31,416 square units. Click on them, or tap them, to trace them automatically.
+Some figures are drawn so that you can trace them, either manually or automatically. Click on them, or tap them, to trace them automatically.
 
 If you use the 'Interior Pole method' (e.g. to trace the large yelow rectangle with the pole inside it), the constant C is shown at the pole.
 
