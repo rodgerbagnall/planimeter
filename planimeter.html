@@ -266,6 +266,60 @@
 		return new Promise(resolve => setTimeout(resolve, ms));
 	}
 
+	class Line {
+		constructor(p1, p2) {
+			this.p1 = p1;
+			this.p2 = p2;
+
+			this.m = (p2.y - p1.y) / (p2.x - p1.x);
+
+			if (Math.abs(this.m) != Infinity) this.c = p1.y - p1.x * this.m;
+		}
+
+		y(x) {
+			return this.m * x + this.c;
+		}
+
+		x(y) {
+			return (y - this.c) / this.m;
+		}
+
+		* points(delta) {
+			if (Math.abs(this.m) == Infinity) { // vertical
+				if (this.p2.y  > this.p1.y) {
+					for (let y = this.p1.y; y <= this.p2.y; y += delta) {
+						yield {x: this.p1.x, y};
+					}
+				} else {
+					for (let y = this.p1.y; y >= this.p2.y; y -= delta) {
+						yield {x: this.p1.x, y};
+					}
+				}
+			} else if (Math.abs(this.m) <= 1) { // shallow
+				if (this.p2.x > this.p1.x) {
+					for (let x = this.p1.x; x <= this.p2.x; x += delta) {
+						yield {x, y: this.y(x)};
+					}
+				} else {
+					for (let x = this.p1.x; x >= this.p2.x; x -= delta) {
+						yield {x, y: this.y(x)};
+					}
+				}
+			} else { // steep
+				if (this.p2.y  > this.p1.y) {
+					for (let y = this.p1.y; y <= this.p2.y; y += delta) {
+						yield {x: this.x(y), y};
+					}
+				} else {
+					for (let y = this.p1.y; y >= this.p2.y; y -= delta) {
+						yield {x: this.x(y), y};
+					}
+				}
+			}
+		}
+
+	}
+
 	async function trace(event) {
 		let id = '#' + event.currentTarget.id;
 		let localName = $(id)[0].localName;
@@ -287,31 +341,20 @@
 		PLANIMETER.zeroise();
 		await sleep(700);
 
-		let delta = 0.01, tx = x, ty = y;
+		let delta = 0.001, step = 0, major = 250, ms = 10;
 
-		let step = 0, major = 250, ms = 10
+		let lines = [
+			new Line({x, y}, {x: x + w, y}),
+			new Line({x: x + w, y}, {x: x + w, y: y + h}),
+			new Line({x: x + w, y: y + h}, {x, y: y + h}),
+			new Line({x, y: y + h}, {x, y})
+		];
 
-		for (; tx <= x + w; tx += delta) { // top, left to right
-			PLANIMETER.goto(tx, ty);
-			if (step++ % major == 0) await(sleep(ms));
-		}
-		await sleep(20)
-
-		for (; ty <= y + h; ty += delta) { // rhs, top to bottom
-			PLANIMETER.goto(tx, ty);
-			if (step++ % major == 0) await(sleep(ms));
-		}
-		await sleep(20);
-
-		for (; tx >= x; tx -= delta) {// bottom, right to left
-			PLANIMETER.goto(tx, ty);
-			if (step++ % major == 0) await(sleep(ms));
-		}
-		await sleep(20);
-
-		for (; ty >= y; ty -= delta) {// lhs, bottom to top
-			PLANIMETER.goto(tx, ty);
-			if (step++ % major == 0) await(sleep(ms));
+		for (line of lines) {
+			for (let p of line.points(delta)) {
+				PLANIMETER.goto(p.x, p.y);
+				if (step++ % major == 0) await(sleep(ms));
+			}
 		}
 
 		console.log(`got ${PLANIMETER.distanceRolled.toFixed(2)}, expected ${(h * w).toFixed(2)}`);
@@ -326,11 +369,11 @@
 		PLANIMETER.zeroise();
 		await sleep(700);
 
-		let delta = 0.001, step = 0, ms = 25;
+		let delta = 0.001, step = 0, major = 100, ms = 25;
 
 		for (let theta = 0; theta <= 2 * Math.PI; theta += delta) {
 			PLANIMETER.goto(cx - r * Math.cos(theta), cy - r * Math.sin(theta));
-			if (step++ % 100 == 0) await(sleep(ms));
+			if (step++ % major == 0) await(sleep(ms));
 		}
 
 		console.log(`got ${PLANIMETER.distanceRolled.toFixed(2)}, expected ${(Math.PI * r * r).toFixed(2)}`);
@@ -338,7 +381,6 @@
 
 	async function tracePolygon(id) {
 		let points = $(id).attr('points').split(' '), n = points.length;
-
 
 		for (let i = 0; i < n; i++) {
 			let [x, y] = points[i].split(',');
@@ -360,35 +402,11 @@
 		let delta = 0.001, step = 0, major = 400, ms = 5;
 
 		for (let i = 0; i < n; i++) {
-			if (points[i].x == points[i + 1].x) {
-				if (points[i].y < points[i + 1].y) {
-					for (let y = points[i].y; y < points[i + 1].y; y += delta) {
-						PLANIMETER.goto(points[i].x, y);
-						if (step++ % major == 0) await(sleep(ms));
-					}
-				} else {
-					for (let y = points[i].y; y > points[i + 1].y; y -= delta) {
-						PLANIMETER.goto(points[i].x, y);
-						if (step++ % major == 0) await(sleep(ms));
-					}
-				}
+			let line = new Line(points[i], points[i + 1]);
 
-			} else {
-
-				let m = (points[i + 1].y - points[i].y) / (points[i + 1].x - points[i].x);
-				let c = points[i].y - points[i].x * m;
-
-				if (points[i].x < points[i + 1].x) {
-					for (let x = points[i].x; x < points[i + 1].x; x += delta) {
-						PLANIMETER.goto(x, m * x + c);
-						if (step++ % major == 0) await(sleep(ms));
-					}
-				} else {
-					for (let x = points[i].x; x >= points[i + 1].x; x -= delta) {
-						PLANIMETER.goto(x, m * x + c);
-						if (step++ % major == 0) await(sleep(ms));
-					}
-				}
+			for (let p of line.points(delta)) {
+				PLANIMETER.goto(p.x, p.y);
+				if (step++ % major == 0) await(sleep(ms));
 			}
 		}
 
