@@ -1,38 +1,32 @@
-console.log('hi')
-var TRACING = false;
+var TRACING = false, DELTA = 0.03, STEP = 0, STEP_PAUSE_AT = 60;
 
 var DRAW = SVG('#svg')
 DRAW.on(['dblclick', 'dbltap'], event => {event.preventDefault(); TRACING = false;});
-
-
-rect(50, 50, 500, 510)
-
 
 function format(n) {
     return n.toLocaleString(undefined, {maximumFractionDigits: 0});
 }
 
-function rect(x, y, w, h, fill='goldenrod') {
+function rect(x, y, w, h) {
     let fig = DRAW.nested();
-    fig.rect(w, h).fill(fill).remember('params', {x, y, w, h}).click(function() {traceRect(this.remember('params'))});
-    let rbox = fig.rbox();
-    fig.text(`${format(w * h)} px²`).x(rbox.cx).y(rbox.cy).attr('text-anchor', 'middle');
+    fig.rect(w, h).fill('goldenrod').click(function() {autoTrace(this)});
+    fig.text(`${format(w * h)} px²`).x(w / 2).y(h / 2).attr('text-anchor', 'middle');
     fig.move(x, y);
     fig.opacity(0.4);
 }
 
 function circle(x, y, r) {
     let fig = DRAW.nested();
-    fig.circle(2 * r).fill('goldenrod').remember('params', {x, y, r}).click(function() {traceCircle(this.remember('params'))});
-    let rbox = fig.rbox();
-    fig.text(`${format(Math.PI * r ** 2)} px²`).x(rbox.cx).y(rbox.cy).attr('text-anchor', 'middle');
+    fig.circle(2 * r).fill('goldenrod').click(function() {autoTrace(this)});
+    fig.text(`${format(Math.PI * r ** 2)} px²`).x(r).y(r).attr('text-anchor', 'middle');
     fig.move(x, y);
     fig.opacity(0.4);
 }
 
-function polygon(points) {
+function polygon(points, ccw=false) {
     let fig = DRAW.nested();
-    fig.polygon(points).fill('goldenrod').remember('params', points).click(function() {tracePolygon(this.remember('params'))});
+    fig.polygon(points).fill('goldenrod').click(function() {autoTrace(this, ccw)});
+    fig.opacity(0.4);
 
     points.push(points[0]);
     let area = 0, n = points.length - 1;
@@ -41,11 +35,26 @@ function polygon(points) {
         area += (points[i][0] - points[i + 1][0]) * (points[i][1] + points[i + 1][1]) / 2;
     }
 
-    let rbox = fig.rbox();
+    let box = fig.bbox();
+    fig.text(`${format(ccw ? 0 - area : area)} px²`).x(box.cx).y(box.cy).attr('text-anchor', 'middle');
+}
 
-    fig.text(`${format(area)} px²`).x(rbox.cx).y(rbox.cy).attr('text-anchor', 'middle');
-
+async function path(pathString, ccw=false) {
+    let fig = DRAW.nested();
+    let node = fig.path(pathString).fill('goldenrod').click(function() {autoTrace(this, ccw)}).node;
     fig.opacity(0.4);
+
+    let pathLength = node.getTotalLength(), p0 = node.getPointAtLength(0), area = 0;
+
+    for (let length = DELTA; length <= pathLength; length += DELTA) {
+        let p = node.getPointAtLength(length);
+        area += (p0.x - p.x) * (p0.y + p.y) / 2;
+        p0 = p;
+        if (STEP++ % STEP_PAUSE_AT == 0) await(sleep(0));
+    }
+
+    let box = fig.bbox();
+    fig.text(`${format(ccw ? 0 - area : area)} px²`).x(box.cx).y(box.cy).attr('text-anchor', 'middle');
 }
 
 class Circle {
@@ -55,6 +64,7 @@ class Circle {
         this.y = y;
         this.r = r;
         this.planimeter = planimeter;
+        this.zeroiseOnMove = zeroiseOnMove;
 
         this.g = DRAW.nested();
 
@@ -72,7 +82,7 @@ class Circle {
             //this.setText(`${this.text} ${this.x} ${this.y}`);
             this.planimeter.drawArms()
 
-            if (zeroiseOnMove) PLANIMETER.zeroise();
+            if (this.zeroiseOnMove) PLANIMETER.zeroise();
         });
     }
 
@@ -146,7 +156,7 @@ class Planimeter {
         let p1 = {x: px + h * dy, y: py - h * dx};
         let p2 = {x: px - h * dy, y: py + h * dx};
 
-        let tracerLine = this.tracerArm.remember('line');
+        let memory = this.tracerArm.remember('line');
 
         // arbitrary choice of intersection point
         this.hinge.center(p2.x, p2.y);
@@ -155,12 +165,12 @@ class Planimeter {
         this.linkage.show();
 
 
-        if (! tracerLine) return;
+        if (! memory) return;
 
 
         // https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
-        let num = (tracerLine.x2 - tracerLine.x1) * (tracerLine.y1 - p2.y) - (tracerLine.x1 - p2.x) * (tracerLine.y2 - tracerLine.y1);
-        let dist = num / Math.hypot(tracerLine.x2 - tracerLine.x1, tracerLine.y2 - tracerLine.y1);
+        let num = (memory.x2 - memory.x1) * (memory.y1 - p2.y) - (memory.x1 - p2.x) * (memory.y2 - memory.y1);
+        let dist = num / Math.hypot(memory.x2 - memory.x1, memory.y2 - memory.y1);
 
         this.distanceRolled -= dist * this.tracer.r;
 
@@ -169,7 +179,7 @@ class Planimeter {
 
 
         // https://stackoverflow.com/questions/14066933/direct-way-of-computing-clockwise-angle-between-2-vectors
-        let x1 = tracerLine.x2 - this.pole.x, y1 = tracerLine.y2 - this.pole.y;
+        let x1 = memory.x2 - this.pole.x, y1 = memory.y2 - this.pole.y;
         let x2 = this.tracer.x - this.pole.x, y2 = this.tracer.y - this.pole.y;
 
         this.angleTurned += Math.atan2(x1 * y2 - y1 * x2, x1 * x2 + y1 * y2);
@@ -177,18 +187,12 @@ class Planimeter {
 
 }
 
-    // function distancePointToLine(line, p0) { // signed
-    //     // https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
-    //     let num = (line.x2 - line.x1) * (line.y1 - p0.y) - (line.x1 - p0.x) * (line.y2 - line.y1);
-    //     return num / Math.hypot(line.x2 - line.x1, line.y2 - line.y1);
-    // }
-
 let PLANIMETER = new Planimeter();
 
 document.addEventListener('keydown', keyHandler);
 
 function keyHandler(event) {
-    if (['z', 'Z', '0'].includes(event.key)) {
+    if (['z', 'Z', '0', 'Escape'].includes(event.key)) {
         PLANIMETER.zeroise();
         return;
     }
@@ -211,148 +215,45 @@ function keyHandler(event) {
     PLANIMETER.tracer.move(dx, dy);
 }
 
-
-class Line {
-    constructor(p1, p2) {
-        this.p1 = p1;
-        this.p2 = p2;
-
-        this.m = (p2.y - p1.y) / (p2.x - p1.x);
-
-        if (p2.x != p1.x) this.c = p1.y - p1.x * this.m;
-    }
-
-    y(x) {
-        return this.m * x + this.c;
-    }
-
-    x(y) {
-        return (y - this.c) / this.m;
-    }
-
-    * points(delta) {
-        if (! TRACING) return;
-
-        let gradient = Math.abs(this.m);
-
-        if (gradient == Infinity) { // vertical
-            if (this.p2.y  > this.p1.y) {
-                for (let y = this.p1.y; TRACING && y <= this.p2.y; y += delta) {
-                    yield {x: this.p1.x, y};
-                }
-            } else {
-                for (let y = this.p1.y; TRACING && y >= this.p2.y; y -= delta) {
-                    yield {x: this.p1.x, y};
-                }
-            }
-        } else if (gradient > 1) { // steep
-            if (this.p2.y  > this.p1.y) {
-                for (let y = this.p1.y; TRACING && y <= this.p2.y; y += delta) {
-                    yield {x: this.x(y), y};
-                }
-            } else {
-                for (let y = this.p1.y; TRACING && y >= this.p2.y; y -= delta) {
-                    yield {x: this.x(y), y};
-                }
-            }
-        } else { // shallow
-            if (this.p2.x > this.p1.x) {
-                for (let x = this.p1.x; TRACING && x <= this.p2.x; x += delta) {
-                    yield {x, y: this.y(x)};
-                }
-            } else {
-                for (let x = this.p1.x; TRACING && x >= this.p2.x; x -= delta) {
-                    yield {x, y: this.y(x)};
-                }
-            }
-        }
-    }
-
-}
-
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function setTotalText(delta) {
-    // if the tracer has rolled around the pole once, add the zero-circle area
-    let r = Math.round((1 / delta) * PLANIMETER.angleTurned / Math.PI);
-    if (r != 2 / delta) return;
-    let t = PLANIMETER.tracer.textElement.text();
-    PLANIMETER.tracer.setText(`${t}, +C = ${format(PLANIMETER.distanceRolled + PLANIMETER.C)}`)
-}
+async function autoTrace(fig, ccw) {
+    let path = fig.node, pathLength = path.getTotalLength(), p0 = path.getPointAtLength(0);
 
-async function traceRect(p) {
-    PLANIMETER.tracer.goto(p.x, p.y);
+    let offset = {x: path.viewportElement.x.baseVal.value, y: path.viewportElement.y.baseVal.value};
+
+    PLANIMETER.tracer.goto(offset.x + p0.x, offset.y + p0.y);
     PLANIMETER.zeroise();
-
-    let delta = 0.01, step = 0, major = 40, ms = 1;
-
-    let lines = [
-        new Line({x: p.x, y: p.y}, {x: p.x + p.w, y: p.y}),
-        new Line({x: p.x + p.w, y: p.y}, {x: p.x + p.w, y: p.y + p.h}),
-        new Line({x: p.x + p.w, y: p.y + p.h}, {x: p.x, y: p.y + p.h}),
-        new Line({x: p.x, y: p.y + p.h}, {x: p.x, y: p.y})
-    ];
 
     TRACING = true;
 
-    for (line of lines) {
-        for (let point of line.points(delta)) {
-            PLANIMETER.tracer.goto(point.x, point.y);
-            if (step++ % major == 0) await(sleep(ms));
+    if (ccw) {
+        for (let length = pathLength; TRACING && length >= 0; length -= DELTA) {
+            let p = path.getPointAtLength(length);
+            PLANIMETER.tracer.goto(offset.x + p.x, offset.y + p.y);
+            if (STEP++ % STEP_PAUSE_AT == 0) await(sleep(0));
+        }
+    } else {
+        for (let length = 0; TRACING && length <= pathLength; length += DELTA) {
+            let p = path.getPointAtLength(length);
+            PLANIMETER.tracer.goto(offset.x + p.x, offset.y + p.y);
+            if (STEP++ % STEP_PAUSE_AT == 0) await(sleep(0));
         }
     }
 
     TRACING = false;
 
-    setTotalText(delta);
-}
-
-async function traceCircle(p) {
-    let x = p.x + p.r, y = p.y + p.r;
-    PLANIMETER.tracer.goto(x + p.r, y);
-    PLANIMETER.zeroise();
-
-    let delta = 0.01 / p.r, step = 0, major = 40, ms = 1;
-
-    TRACING = true;
-
-    for (let theta = 0; TRACING && theta <= 2 * Math.PI; theta += delta) {
-        PLANIMETER.tracer.goto(x + p.r * Math.cos(theta), y + p.r * Math.sin(theta));
-        if (step++ % major == 0) await(sleep(ms));
+    if (PLANIMETER.angleTurned >= 2 * Math.PI * 0.999) { // really, depends on DELTA
+        // the tracer has rolled around the pole once so add the zero-circle area
+        let t = PLANIMETER.tracer.textElement.text();
+        PLANIMETER.tracer.setText(`${t}, +C = ${format(PLANIMETER.distanceRolled + PLANIMETER.C)}`)
     }
-
-    TRACING = false;
-
-    setTotalText(delta);
 }
 
 
-async function tracePolygon(points) {
-    PLANIMETER.tracer.goto(points[0][0], points[0][1]);
-    PLANIMETER.zeroise();
-
-    let n = points.length - 1;
-
-    let delta = 0.01, step = 0, major = 40, ms = 1;
-
-    TRACING = true;
-
-    for (let i = 0; i < n; i++) {
-        let line = new Line({x: points[i][0], y: points[i][1]}, {x: points[i + 1][0], y: points[i + 1][1]});
-
-        for (let point of line.points(delta)) {
-            PLANIMETER.tracer.goto(point.x, point.y);
-            if (step++ % major == 0) await(sleep(ms));
-        }
-    }
-
-    TRACING = false;
-
-    setTotalText(delta);
-}
-
+rect(50, 50, 500, 510)
 
 rect(450, 200, 100, 200)
 
@@ -365,3 +266,14 @@ circle(600, 110, 100)
 polygon([[500,410], [650,410], [650,550], [640,550], [640,480], [500,480]])
 
 polygon([[200,300], [170,350], [200,370], [100,360], [50,350], [0,300], [100,150], [150,200]]);
+
+path(`M 137.077 222.345
+    C 124.162 222.345  120.887 258.264  120.887 265.519
+    C 120.887 289.603  115.130 315.169  129.522 325.962
+    C 148.995 340.568  167.219 344.292  180.251 347.549
+    C 210.399 355.086  228.430 359.240  246.091 360.502
+    C 281.021 362.997  302.891 362.903  322.724 361.581
+    C 357.330 359.274  374.138 351.966  391.803 347.549
+    C 409.773 343.057  427.540 326.205  432.818 313.010
+    C 441.201 292.051  458.843 282.426  464.119 266.598
+    Z`, true);
