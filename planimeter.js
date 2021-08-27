@@ -1,4 +1,4 @@
-var TRACING = false, DELTA = 0.03, STEP = 0, STEP_PAUSE_AT = 60, SCALE = 1, UNITS = 'px', CALIBRATE = [];
+var TRACING = false, DELTA = 0.03, STEP = 0, STEP_PAUSE_AT = 60, SCALE = 0.967, UNITS = 'km', CALIBRATE = [];
 
 var DRAW = SVG('#svg')
 DRAW.on(['dblclick', 'dbltap'], event => {event.preventDefault(); TRACING = false;});
@@ -335,8 +335,7 @@ function keyHandler(event) {
     }
 
     if (event.code == 'KeyS') {
-        let n = parseInput();
-        SCALE = PLANIMETER.areaTracedPx / n;
+        SCALE = PLANIMETER.areaTracedPx / parseInput();
 
         for (let fig of DRAW.find('.figure')) {
             setFigureAreaText(fig);
