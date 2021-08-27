@@ -1,64 +1,100 @@
-var TRACING = false, DELTA = 0.03, STEP = 0, STEP_PAUSE_AT = 60;
+var TRACING = false, DELTA = 0.03, STEP = 0, STEP_PAUSE_AT = 60, SCALE = 1, UNITS = 'px', CALIBRATE = [];
 
 var DRAW = SVG('#svg')
 DRAW.on(['dblclick', 'dbltap'], event => {event.preventDefault(); TRACING = false;});
 
-function format(n) {
-    return n.toLocaleString(undefined, {maximumFractionDigits: 0});
+function format(n, digits=0) {
+    return n.toLocaleString(undefined, {maximumFractionDigits: digits});
+}
+
+function setFigureAreaText(fig, digits=3) {
+    let params = fig.remember('params');
+
+    if (! params.areaPx) return;
+
+    params.textElement.clear().attr('text-anchor', 'middle')
+        .text(`${params.approx ? '≈ ' : ''}${format(params.areaPx / SCALE, digits)} ${UNITS}²`);
+}
+
+function getFig() {
+    return DRAW.nested().opacity(0.4).hide().addClass('figure');
 }
 
 function rect(x, y, w, h) {
-    let fig = DRAW.nested();
-    fig.rect(w, h).fill('goldenrod').click(function() {autoTrace(this)});
-    fig.text(`${format(w * h)} px²`).x(w / 2).y(h / 2).attr('text-anchor', 'middle');
+    let fig = getFig();
+    let node = fig.rect(w, h).fill('goldenrod');
+    let areaPx = w * h;
+    let textElement = fig.text().x(w / 2).y(h / 2);
     fig.move(x, y);
-    fig.opacity(0.4);
+    fig.remember('params', {ccw: false, node, textElement, areaPx, approx: false});
+    setFigureAreaText(fig);
 }
 
 function circle(x, y, r) {
-    let fig = DRAW.nested();
-    fig.circle(2 * r).fill('goldenrod').click(function() {autoTrace(this)});
-    fig.text(`${format(Math.PI * r ** 2)} px²`).x(r).y(r).attr('text-anchor', 'middle');
+    let fig = getFig();
+    let node = fig.circle(2 * r).fill('goldenrod');
+    let areaPx = Math.PI * r ** 2;
+    let textElement = fig.text().x(r).y(r);
     fig.move(x, y);
-    fig.opacity(0.4);
+    fig.remember('params', {ccw: false, node, textElement, areaPx, approx: false});
+    setFigureAreaText(fig);
 }
 
-function polygon(points, ccw=false) {
-    let fig = DRAW.nested();
-    fig.polygon(points).fill('goldenrod').click(function() {autoTrace(this, ccw)});
-    fig.opacity(0.4);
+function areaPoly(p) {
+    let area = 0;
 
-    points.push(points[0]);
-    let area = 0, n = points.length - 1;
-
-    for (let i = 0; i < n; i++) {
-        area += (points[i][0] - points[i + 1][0]) * (points[i][1] + points[i + 1][1]) / 2;
+    for (let i = 0, len = p.length; i < len; i++) {
+        area += p[i][0] * (p[(i + 1) % len][1] - p[(i - 1 + len) % len][1]);
     }
 
-    let box = fig.bbox();
-    fig.text(`${format(ccw ? 0 - area : area)} px²`).x(box.cx).y(box.cy).attr('text-anchor', 'middle');
+    return area / 2;
 }
 
-async function path(pathString, ccw=false) {
-    let fig = DRAW.nested();
-    let node = fig.path(pathString).fill('goldenrod').click(function() {autoTrace(this, ccw)}).node;
-    fig.opacity(0.4);
+function polygon(params, points) {
+    params = Object.assign({ccw: false, x: 0, y: 0, approx: false, areaPx: NaN}, params);
+    let fig = getFig();
+    fig.move(params.x, params.y);
+    fig.remember('params', params);
+    params['node'] = fig.polygon(points).fill('goldenrod');;
 
-    let pathLength = node.getTotalLength(), p0 = node.getPointAtLength(0), area = 0;
+    let box = fig.show().rbox();
+    fig.hide();
+    params['textElement'] = fig.text().x(box.cx - params.x - 50).y(box.cy - params.y);
 
-    for (let length = DELTA; length <= pathLength; length += DELTA) {
-        let p = node.getPointAtLength(length);
-        area += (p0.x - p.x) * (p0.y + p.y) / 2;
+    let areaPx = areaPoly(points);
+
+    params.areaPx = params.ccw ? 0 - areaPx : areaPx;
+
+    setFigureAreaText(fig, 1);
+}
+
+async function path(params, pathString) {
+    params = Object.assign({ccw: false, x: 0, y: 0, approx: true, areaPx: NaN}, params);
+    let fig = getFig();
+    fig.move(params.x, params.y);
+    fig.remember('params', params);
+    let node = fig.path(pathString).fill('goldenrod');
+    params['node'] = node;
+
+    let box = fig.show().bbox();
+    fig.hide();
+    params['textElement'] = fig.text(`calculating`).x(box.cx).y(box.cy);
+
+    let pathLength = node.node.getTotalLength(), p0 = node.node.getPointAtLength(0), areaPx = 0;
+
+    for (let length = 10 * DELTA; length <= pathLength; length += 10 * DELTA) {
+        let p = node.node.getPointAtLength(length);
+        areaPx += (p0.x - p.x) * (p0.y + p.y) / 2;
         p0 = p;
         if (STEP++ % STEP_PAUSE_AT == 0) await(sleep(0));
     }
 
-    let box = fig.bbox();
-    fig.text(`${format(ccw ? 0 - area : area)} px²`).x(box.cx).y(box.cy).attr('text-anchor', 'middle');
+    params.areaPx = params.ccw ? 0 - areaPx : areaPx;
+
+    setFigureAreaText(fig, 1);
 }
 
 class Circle {
-
     constructor(x, y, r, text, fill, planimeter, zeroiseOnMove=false) {
         this.x = x;
         this.y = y;
@@ -79,7 +115,6 @@ class Circle {
             this.x = this.g.x() + this.r;
             this.y = this.g.y() + this.r;
 
-            //this.setText(`${this.text} ${this.x} ${this.y}`);
             this.planimeter.drawArms()
 
             if (this.zeroiseOnMove) PLANIMETER.zeroise();
@@ -100,17 +135,16 @@ class Circle {
 }
 
 class Planimeter {
-
     constructor() {
-        this.distanceRolled = 0;
-        this.angleTurned = 0;
+        this.areaTracedPx = 0;
+        this.angleTurnedRadians = 0;
 
         this.tracer = new Circle(400, 550, 200, 'tracer', '#aad', this);
 
         this.pole   = new Circle(200, 200, 220, 'pole', '#ada', this, true);
 
         this.C = Math.PI * (this.pole.r ** 2 + this.tracer.r ** 2);
-        this.pole.setText(`pole\nC: ${format(this.C)} px²`);
+        this.pole.setText(`pole\nzero circle: ${format(this.C)} px²`);
 
         this.linkage = DRAW.group().hide();
         this.hinge     = this.linkage.circle(6).fill('grey').opacity(0.3);
@@ -118,12 +152,14 @@ class Planimeter {
         this.poleArm   = this.linkage.line().stroke({color: 'black', width: 1});
 
         this.tracer.g.fire('dragmove');
+
+        this.front = this.tracer;
     }
 
     zeroise() {
-        this.distanceRolled = 0;
-        this.angleTurned = 0;
-        this.tracer.setText(`traced area: ${format(this.distanceRolled)}`);
+        this.areaTracedPx = 0;
+        this.angleTurnedRadians = 0;
+        this.setTracedAreaText();
         TRACING = false;
     }
 
@@ -172,9 +208,7 @@ class Planimeter {
         let num = (memory.x2 - memory.x1) * (memory.y1 - p2.y) - (memory.x1 - p2.x) * (memory.y2 - memory.y1);
         let dist = num / Math.hypot(memory.x2 - memory.x1, memory.y2 - memory.y1);
 
-        this.distanceRolled -= dist * this.tracer.r;
-
-        this.tracer.setText(`traced: ${format(this.distanceRolled)} px²`);
+        this.areaTracedPx -= dist * this.tracer.r;
 
 
 
@@ -182,18 +216,134 @@ class Planimeter {
         let x1 = memory.x2 - this.pole.x, y1 = memory.y2 - this.pole.y;
         let x2 = this.tracer.x - this.pole.x, y2 = this.tracer.y - this.pole.y;
 
-        this.angleTurned += Math.atan2(x1 * y2 - y1 * x2, x1 * x2 + y1 * y2);
+        this.angleTurnedRadians += Math.atan2(x1 * y2 - y1 * x2, x1 * x2 + y1 * y2);
+
+        this.setTracedAreaText();
     }
 
+    setTracedAreaText() {
+        let area = this.areaTracedPx / SCALE;
+
+        // if the tracer has rolled around the pole once then add the zero-circle area
+        if (this.angleTurnedRadians > 2 * Math.PI * 0.999) area += this.C / SCALE;
+
+        this.tracer.setText(`traced: ${format(area, 3)} ${UNITS}²`);
+    }
+
+    setScale(event) {
+        if (event.shiftKey) {
+            let n = parseInput();
+
+            if (CALIBRATE.length > 2) {
+                CALIBRATE.push(CALIBRATE[0]);
+                let area = 0;
+
+                for (let i = 0; i <= CALIBRATE.length - 2; i++) {
+                    area += (CALIBRATE[i].x - CALIBRATE[i + 1].x) * (CALIBRATE[i].y + CALIBRATE[i + 1].y) / 2;
+                }
+
+                SCALE = area / n;
+            } else if (CALIBRATE.length == 2) {
+                let d = Math.hypot(CALIBRATE[0].x - CALIBRATE[1].x, CALIBRATE[0].y - CALIBRATE[1].y);
+                SCALE = (d / n) ** 2;
+
+            }
+
+            for (let fig of DRAW.find('.figure')) {
+                setFigureAreaText(fig);
+            }
+
+            this.pole.setText(`pole\nzero circle: ${format(this.C / SCALE, 3)} ${UNITS}²`);
+
+            CALIBRATE = [];
+
+            return;
+        }
+
+        if (CALIBRATE.length > 0) {
+            let last = CALIBRATE[CALIBRATE.length - 1];
+            if (last.x == this.tracer.x && last.y == this.tracer.y) return;
+        }
+
+        CALIBRATE.push({x: this.tracer.x, y: this.tracer.y});
+    }
 }
 
-let PLANIMETER = new Planimeter();
+
+function parseInput() {
+    const u =  document.getElementById('units');
+
+    let match = /^([\d.]+)\s*(\S+)/.exec(u.value);
+
+    if (! match) return;
+
+    UNITS = match[2];
+
+    return parseFloat(match[1]);
+}
+
+var PLANIMETER = new Planimeter();
 
 document.addEventListener('keydown', keyHandler);
+
+function foregroundNextFigure() {
+    let figures = DRAW.find('.figure');
+
+    let n = -1;
+
+    for (let i = 0; i < figures.length; i++) {
+        if (figures[i].hasClass('fg')) {
+            n = i;
+        }
+    }
+
+    if (n == -1) {
+        figures[0].addClass('fg').front();
+        return
+    }
+
+    figures[n].removeClass('fg');
+    figures[(n + 1) % figures.length].addClass('fg').front();
+}
 
 function keyHandler(event) {
     if (['z', 'Z', '0', 'Escape'].includes(event.key)) {
         PLANIMETER.zeroise();
+        return;
+    }
+
+    if (event.code == 'KeyP') {
+        PLANIMETER.front = PLANIMETER.pole;
+        PLANIMETER.front.g.front();
+        return;
+    }
+
+    if (event.code == 'KeyT') {
+        PLANIMETER.front = PLANIMETER.tracer;
+        PLANIMETER.front.g.front();
+        return;
+    }
+
+    if (event.code == 'KeyF') {
+        foregroundNextFigure();
+        return;
+    }
+
+    if (event.code == 'KeyC') {
+        PLANIMETER.setScale(event);
+        return;
+    }
+
+    if (event.code == 'KeyS') {
+        let n = parseInput();
+        SCALE = PLANIMETER.areaTracedPx / n;
+
+        for (let fig of DRAW.find('.figure')) {
+            setFigureAreaText(fig);
+        }
+
+        PLANIMETER.pole.setText(`pole\nzero circle: ${format(PLANIMETER.C / SCALE, 3)} ${UNITS}²`);
+
         return;
     }
 
@@ -212,15 +362,19 @@ function keyHandler(event) {
         dx *= 10;
     }
 
-    PLANIMETER.tracer.move(dx, dy);
+    PLANIMETER.front.move(dx, dy);
 }
+
+
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function autoTrace(fig, ccw) {
-    let path = fig.node, pathLength = path.getTotalLength(), p0 = path.getPointAtLength(0);
+async function autoTrace(params) {
+    if (params.node.parent().opacity() == 0) return;
+
+    let path = params.node.node, pathLength = path.getTotalLength(), p0 = path.getPointAtLength(0);
 
     let offset = {x: path.viewportElement.x.baseVal.value, y: path.viewportElement.y.baseVal.value};
 
@@ -229,7 +383,7 @@ async function autoTrace(fig, ccw) {
 
     TRACING = true;
 
-    if (ccw) {
+    if (params.ccw) {
         for (let length = pathLength; TRACING && length >= 0; length -= DELTA) {
             let p = path.getPointAtLength(length);
             PLANIMETER.tracer.goto(offset.x + p.x, offset.y + p.y);
@@ -244,36 +398,74 @@ async function autoTrace(fig, ccw) {
     }
 
     TRACING = false;
-
-    if (PLANIMETER.angleTurned >= 2 * Math.PI * 0.999) { // really, depends on DELTA
-        // the tracer has rolled around the pole once so add the zero-circle area
-        let t = PLANIMETER.tracer.textElement.text();
-        PLANIMETER.tracer.setText(`${t}, +C = ${format(PLANIMETER.distanceRolled + PLANIMETER.C)}`)
-    }
 }
 
 
-rect(50, 50, 500, 510)
+rect(50, 150, 500, 510)
 
 rect(450, 200, 100, 200)
 
 rect(200, 450, 200, 100)
 
-rect(100, 100, 10, 10)
-
 circle(600, 110, 100)
 
-polygon([[500,410], [650,410], [650,550], [640,550], [640,480], [500,480]])
+polygon({x: 500, y: 410}, [[0, 0], [150, 0], [150, 140], [140, 140], [140, 70], [0, 70]])
 
-polygon([[200,300], [170,350], [200,370], [100,360], [50,350], [0,300], [100,150], [150,200]]);
+polygon({x: 0, y: 150}, [[200, 150], [170, 200], [200, 220], [100, 210], [50, 200], [0, 150], [100, 0], [150, 50]]);
 
-path(`M 137.077 222.345
-    C 124.162 222.345  120.887 258.264  120.887 265.519
-    C 120.887 289.603  115.130 315.169  129.522 325.962
-    C 148.995 340.568  167.219 344.292  180.251 347.549
-    C 210.399 355.086  228.430 359.240  246.091 360.502
-    C 281.021 362.997  302.891 362.903  322.724 361.581
-    C 357.330 359.274  374.138 351.966  391.803 347.549
-    C 409.773 343.057  427.540 326.205  432.818 313.010
-    C 441.201 292.051  458.843 282.426  464.119 266.598
-    Z`, true);
+path({ccw: true, x: 0, y: 0}, `M 137 222
+    C 124 222  120 258  120 265
+    C 120 289  115 315  129 325
+    C 148 340  167 344  180 347
+    C 210 355  228 359  246 360
+    C 281 362  302 362  322 361
+    C 357 359  374 351  391 347
+    C 409 343  427 326  432 313
+    C 441 292  458 282  464 266
+    Z`);
+
+path({ccw: true, x: 20, y: 400}, `m 65,129
+    c 6,-13 2,-21 9,-28
+    13,-11 33,-8 50,-5 16,2 25,18 32,32 18,34 -4,83 -43,88 -14,3 -31,2 -43,-7
+    C 54,196 48,175 45,155
+    40,128 38,98 53,74 77,47 121,42 152,60 c 12,5 26,13 40,9 12,-5 11,-23 2,-31
+    C 181,24 159,25 141,24
+    117,24 93,19 69,20 50,22 31,31 23,49 10,75 10,106 10,134
+    c 1,35 15,69 28,102
+    6,14 22,23 38,24 16,1 33,0 50,0 22,-2 43,-18 53,-38 16,-31 19,-66 4,-96
+    C 175,100 150,84 128,67
+    108,56 83,64 67,79 57,90 53,106 52,121
+    c -1,7 6,20 12,9
+    Z`);
+
+
+function toggleMap() {
+    let map = document.getElementById('map');
+    visibility = map.style.visibility;
+    map.style.visibility = visibility == 'hidden' ? 'visible' : 'hidden';
+}
+
+function toggleFigures() {
+    let figures = DRAW.find('.figure');
+
+    if (figures[0].visible()) {
+        for (fig of figures) {
+            fig.hide();
+            let params = fig.remember('params');
+            params.node.off('click');
+        }
+    } else {
+        for (fig of figures) {
+            fig.show();
+            let params = fig.remember('params');
+            params.node.on('click', function() {autoTrace(params)});
+        }
+    }
+}
+
+document.getElementById('toggle_figures').onclick = toggleFigures;
+
+let button = document.getElementById('toggle_map');
+if (button) button.onclick = toggleMap;
+
+document.getElementById('zeroise').onclick = function() {PLANIMETER.zeroise()};
