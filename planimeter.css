@@ -1,5 +1,30 @@
+body {
+	font-family: Arial, Helvetica, sans-serif;
+}
+
 svg text {
-	font-family: Arial, sans-serif;
+	font-family: monospace;
 	color:  black;
 	font-size: small;
 }
+
+.fg {
+	opacity: 0.8;
+}
+
+.overlay {
+	position: relative;
+}
+
+.overlay img {
+	top: 0;
+	left: 0;
+	display: block;
+}
+
+.overlay svg {
+	position: absolute;
+	top: 0;
+	left: 0;
+}
+

@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 	<meta charset="UTF-8">
@@ -5,9 +6,17 @@
 </head>
 
 <body>
-	<div style="width: 100%; margin: 0; padding: 0; display: inline-block; text-align: center;">
-		<svg id="svg" width="1000" height="800" ></svg>
+	<div width="525"  class="overlay">
+		<svg id="svg" width="525" height="650"></svg>
+		<img id="map" width="525" height="650" src="https://upload.wikimedia.org/wikipedia/commons/d/d5/England_Regions_-_Labelled.svg" />
 	</div>
+	<button id="toggle_figures">figures</button>
+	<button id="toggle_map">map</button>
+	<button id="zeroise">zeroise</button>
+	<input id="units" type="text" value="1 px"/>
+	<a href="https://en.wikipedia.org/wiki/Regions_of_England">Regions of England</a>
+	<a href="https://commons.wikimedia.org/wiki/File:England_Regions_-_Labelled.svg">Wikimedia map of regions</a>
+	<a href="https://geographiclib.sourceforge.io/scripts/geod-calc.html">Areas from lat/lon polygons</a>
 </body>
 
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/3.1.1/svg.min.js"></script>
