@@ -6,17 +6,24 @@
 </head>
 
 <body>
-	<div width="525"  class="overlay">
-		<svg id="svg" width="525" height="650"></svg>
+	<div>
+		<button id="toggle_figures">figures</button>
+		<button id="toggle_map">map</button>
+		<button id="zeroise">zeroise</button>
+
+		<input id="set_scale" type="text" value="0.967 km"/>
+		<p>Tracer arm length (px) <input id="tracer_arm_length_px" value="170" type="text" /></p>
+		<p>Pole arm length (px) <input id="pole_arm_length_px" value="200" type="text" /></p>
+
+		<a href="https://en.wikipedia.org/wiki/Regions_of_England">Regions of England</a>
+		<a href="https://commons.wikimedia.org/wiki/File:England_Regions_-_Labelled.svg">Wikimedia map of regions</a>
+
+	</div>
+
+	<div width="525"  height="100%" class="overlay">
+		<svg id="svg" width="1000" height="1000"></svg>
 		<img id="map" width="525" height="650" src="https://upload.wikimedia.org/wikipedia/commons/d/d5/England_Regions_-_Labelled.svg" />
 	</div>
-	<button id="toggle_figures">figures</button>
-	<button id="toggle_map">map</button>
-	<button id="zeroise">zeroise</button>
-	<input id="units" type="text" value="0.967 km"/>
-	<a href="https://en.wikipedia.org/wiki/Regions_of_England">Regions of England</a>
-	<a href="https://commons.wikimedia.org/wiki/File:England_Regions_-_Labelled.svg">Wikimedia map of regions</a>
-	<a href="https://geographiclib.sourceforge.io/scripts/geod-calc.html">Areas from lat/lon polygons</a>
 </body>
 
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/3.1.1/svg.min.js"></script>

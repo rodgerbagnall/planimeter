@@ -11,9 +11,8 @@ Position the pole (drag it with the mouse) so that the tracer can reach all the 
 Trace the figure roughly to check that the pole is positioned correctly.
 Re-position the pole if the two arms (joining the pole to the tracer via one of the circle intersection points) disappear at any time.
 
-If you use the 'Interior Pole method' (e.g. to trace the large rectangle) the area reported is automaticcaly incremented by the area
-of the zero circle. The value of the constant is determined by the lengths of the pole and tracer arms and is shown at the pole.
-Currently, you can only set the tracer and pole arm lengths by editing the code.
+If you use the 'Interior Pole method' (e.g. to trace the large rectangle) the area reported is automatically incremented by the area
+of the zero circle. The area of the zero circle (referred to as C) is determined by the lengths of the pole and tracer arms and is shown at the pole.
 
 ## Manual tracing
 
@@ -39,7 +38,8 @@ Cancel automatic tracing by double clicking or double tapping anywhere, or by pr
 
 ## Setting the scale
 
-If you know the area of a polygon on the map or you know the distance betwen two points you can set the scale.
+If you know the area of a polygon, or you know the distance betwen two points, or you know the area of a figure you can trace
+then you can set the scale.
 
 ### Polygon
 
@@ -65,3 +65,4 @@ View the page at: https://www.ecclesman.com/p/planimeter.html
 # References
 * http://whistleralley.com/planimeter/planimeter.htm
 * http://www.math.ucsd.edu/~jeggers/Resources/planimeter_slides.pdf Page 5
+* https://geographiclib.sourceforge.io/scripts/geod-calc.html

@@ -1,7 +1,22 @@
 var TRACING = false, DELTA = 0.03, STEP = 0, STEP_PAUSE_AT = 60, SCALE = 0.967, UNITS = 'km', CALIBRATE = [];
 
-var DRAW = SVG('#svg')
+var DRAW = SVG('#svg');
 DRAW.on(['dblclick', 'dbltap'], event => {event.preventDefault(); TRACING = false;});
+
+function parseInput() {
+    const u =  document.getElementById('set_scale');
+
+    let match = /^([\d.]+)\s*(\S+)/.exec(u.value);
+
+    if (! match) return;
+
+    UNITS = match[2];
+
+    return parseFloat(match[1]);
+}
+
+SCALE = parseInput();
+
 
 function format(n, digits=0) {
     return n.toLocaleString(undefined, {maximumFractionDigits: digits});
@@ -135,13 +150,15 @@ class Circle {
 }
 
 class Planimeter {
-    constructor() {
+    constructor(armLengthsPx) {
+        //armLengthsPx = Object.assign({pole: 220, tracer: 200}, armLengthsPx);
+
         this.areaTracedPx = 0;
         this.angleTurnedRadians = 0;
 
-        this.tracer = new Circle(400, 550, 200, 'tracer', '#aad', this);
+        this.tracer = new Circle(400, 550, armLengthsPx.tracer, 'tracer', '#aad', this);
 
-        this.pole   = new Circle(200, 200, 220, 'pole', '#ada', this, true);
+        this.pole   = new Circle(200, 200, armLengthsPx.pole, 'pole', '#ada', this, true);
 
         this.C = Math.PI * (this.pole.r ** 2 + this.tracer.r ** 2);
         this.pole.setText(`pole\nzero circle: ${format(this.C)} px²`);
@@ -154,6 +171,12 @@ class Planimeter {
         this.tracer.g.fire('dragmove');
 
         this.front = this.tracer;
+    }
+
+    clear() {
+        this.tracer.g.remove();
+        this.pole.g.remove();
+        this.linkage.remove();
     }
 
     zeroise() {
@@ -269,20 +292,8 @@ class Planimeter {
     }
 }
 
-
-function parseInput() {
-    const u =  document.getElementById('units');
-
-    let match = /^([\d.]+)\s*(\S+)/.exec(u.value);
-
-    if (! match) return;
-
-    UNITS = match[2];
-
-    return parseFloat(match[1]);
-}
-
-var PLANIMETER = new Planimeter();
+var PLANIMETER = null;
+changeArmLength();
 
 document.addEventListener('keydown', keyHandler);
 
@@ -442,6 +453,8 @@ function toggleMap() {
 function toggleFigures() {
     let figures = DRAW.find('.figure');
 
+    if (figures.length === 0) return;
+
     if (figures[0].visible()) {
         for (fig of figures) {
             fig.hide();
@@ -457,8 +470,20 @@ function toggleFigures() {
     }
 }
 
+function changeArmLength() {
+    let tracer = parseFloat(document.getElementById('tracer_arm_length_px').value);
+    let pole = parseFloat(document.getElementById('pole_arm_length_px').value);
+    if (PLANIMETER !== null) PLANIMETER.clear();
+    PLANIMETER = new Planimeter({tracer, pole});
+}
+
+
 document.getElementById('toggle_figures').onclick = toggleFigures;
 
 document.getElementById('toggle_map').onclick = toggleMap;
 
 document.getElementById('zeroise').onclick = function() {PLANIMETER.zeroise()};
+
+document.getElementById('tracer_arm_length_px').onchange = changeArmLength;
+
+document.getElementById('pole_arm_length_px').onchange = changeArmLength;
