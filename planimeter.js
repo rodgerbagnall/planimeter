@@ -86,7 +86,7 @@ async function path(params, pathString) {
         let p = node.node.getPointAtLength(length);
         areaPx += (p0.x - p.x) * (p0.y + p.y) / 2;
         p0 = p;
-        if (STEP++ % STEP_PAUSE_AT == 0) await(sleep(0));
+        if (STEP++ % STEP_PAUSE_AT === 0) await(sleep(0));
     }
 
     params.areaPx = params.ccw ? 0 - areaPx : areaPx;
@@ -243,7 +243,7 @@ class Planimeter {
                 }
 
                 SCALE = area / n;
-            } else if (CALIBRATE.length == 2) {
+            } else if (CALIBRATE.length === 2) {
                 let d = Math.hypot(CALIBRATE[0].x - CALIBRATE[1].x, CALIBRATE[0].y - CALIBRATE[1].y);
                 SCALE = (d / n) ** 2;
 
@@ -262,7 +262,7 @@ class Planimeter {
 
         if (CALIBRATE.length > 0) {
             let last = CALIBRATE[CALIBRATE.length - 1];
-            if (last.x == this.tracer.x && last.y == this.tracer.y) return;
+            if (last.x === this.tracer.x && last.y === this.tracer.y) return;
         }
 
         CALIBRATE.push({x: this.tracer.x, y: this.tracer.y});
@@ -287,23 +287,19 @@ var PLANIMETER = new Planimeter();
 document.addEventListener('keydown', keyHandler);
 
 function foregroundNextFigure() {
-    let figures = DRAW.find('.figure');
+    let figures = DRAW.find('.figure'), len = figures.length;
 
-    let n = -1;
+    if (len === 0) return;
 
-    for (let i = 0; i < figures.length; i++) {
+    for (let i = 0; i < len; i++) {
         if (figures[i].hasClass('fg')) {
-            n = i;
+            figures[i].removeClass('fg');
+            figures[(i + 1) % len].addClass('fg').front();
+            return;
         }
     }
 
-    if (n == -1) {
-        figures[0].addClass('fg').front();
-        return
-    }
-
-    figures[n].removeClass('fg');
-    figures[(n + 1) % figures.length].addClass('fg').front();
+    figures[0].addClass('fg').front();
 }
 
 function keyHandler(event) {
@@ -312,29 +308,29 @@ function keyHandler(event) {
         return;
     }
 
-    if (event.code == 'KeyP') {
+    if (event.code === 'KeyP') {
         PLANIMETER.front = PLANIMETER.pole;
         PLANIMETER.front.g.front();
         return;
     }
 
-    if (event.code == 'KeyT') {
+    if (event.code === 'KeyT') {
         PLANIMETER.front = PLANIMETER.tracer;
         PLANIMETER.front.g.front();
         return;
     }
 
-    if (event.code == 'KeyF') {
+    if (event.code === 'KeyF') {
         foregroundNextFigure();
         return;
     }
 
-    if (event.code == 'KeyC') {
+    if (event.code === 'KeyC') {
         PLANIMETER.setScale(event);
         return;
     }
 
-    if (event.code == 'KeyS') {
+    if (event.code === 'KeyS') {
         SCALE = PLANIMETER.areaTracedPx / parseInput();
 
         for (let fig of DRAW.find('.figure')) {
@@ -348,11 +344,13 @@ function keyHandler(event) {
 
     let dy = dx = 0;
 
-    if      (event.key == 'ArrowUp')    dy = -1;
-    else if (event.key == 'ArrowDown')  dy = +1;
-    else if (event.key == 'ArrowLeft')  dx = -1;
-    else if (event.key == 'ArrowRight') dx = +1;
+    if      (event.key === 'ArrowUp')    dy = -1;
+    else if (event.key === 'ArrowDown')  dy = +1;
+    else if (event.key === 'ArrowLeft')  dx = -1;
+    else if (event.key === 'ArrowRight') dx = +1;
     else return;
+
+    if (dx === 0 && dy === 0) return;
 
     event.preventDefault();
 
@@ -364,14 +362,12 @@ function keyHandler(event) {
     PLANIMETER.front.move(dx, dy);
 }
 
-
-
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function autoTrace(params) {
-    if (params.node.parent().opacity() == 0) return;
+    if (params.node.parent().opacity() === 0) return;
 
     let path = params.node.node, pathLength = path.getTotalLength(), p0 = path.getPointAtLength(0);
 
@@ -386,13 +382,13 @@ async function autoTrace(params) {
         for (let length = pathLength; TRACING && length >= 0; length -= DELTA) {
             let p = path.getPointAtLength(length);
             PLANIMETER.tracer.goto(offset.x + p.x, offset.y + p.y);
-            if (STEP++ % STEP_PAUSE_AT == 0) await(sleep(0));
+            if (STEP++ % STEP_PAUSE_AT === 0) await(sleep(0));
         }
     } else {
         for (let length = 0; TRACING && length <= pathLength; length += DELTA) {
             let p = path.getPointAtLength(length);
             PLANIMETER.tracer.goto(offset.x + p.x, offset.y + p.y);
-            if (STEP++ % STEP_PAUSE_AT == 0) await(sleep(0));
+            if (STEP++ % STEP_PAUSE_AT === 0) await(sleep(0));
         }
     }
 
@@ -437,11 +433,10 @@ path({ccw: true, x: 20, y: 400}, `m 65,129
     c -1,7 6,20 12,9
     Z`);
 
-
 function toggleMap() {
     let map = document.getElementById('map');
     visibility = map.style.visibility;
-    map.style.visibility = visibility == 'hidden' ? 'visible' : 'hidden';
+    map.style.visibility = visibility === 'hidden' ? 'visible' : 'hidden';
 }
 
 function toggleFigures() {
@@ -464,7 +459,6 @@ function toggleFigures() {
 
 document.getElementById('toggle_figures').onclick = toggleFigures;
 
-let button = document.getElementById('toggle_map');
-if (button) button.onclick = toggleMap;
+document.getElementById('toggle_map').onclick = toggleMap;
 
 document.getElementById('zeroise').onclick = function() {PLANIMETER.zeroise()};
