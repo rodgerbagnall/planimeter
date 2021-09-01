@@ -101,7 +101,7 @@ async function path(params, pathString) {
         let p = node.node.getPointAtLength(length);
         areaPx += (p0.x - p.x) * (p0.y + p.y) / 2;
         p0 = p;
-        if (STEP++ % STEP_PAUSE_AT === 0) await(sleep(0));
+        if (STEP++ % STEP_PAUSE_AT === 0) await sleep(0);
     }
 
     params.areaPx = params.ccw ? 0 - areaPx : areaPx;
@@ -158,7 +158,7 @@ class Planimeter {
 
         this.tracer = new Circle(400, 550, armLengthsPx.tracer, 'tracer', '#aad', this);
 
-        this.pole   = new Circle(200, 200, armLengthsPx.pole, 'pole', '#ada', this, true);
+        this.pole   = new Circle(200 - armLengthsPx.pole, 200, armLengthsPx.pole, 'pole', '#ada', this, true);
 
         this.C = Math.PI * (this.pole.r ** 2 + this.tracer.r ** 2);
         this.pole.setText(`pole\nzero circle: ${format(this.C)} px²`);
@@ -393,13 +393,13 @@ async function autoTrace(params) {
         for (let length = pathLength; TRACING && length >= 0; length -= DELTA) {
             let p = path.getPointAtLength(length);
             PLANIMETER.tracer.goto(offset.x + p.x, offset.y + p.y);
-            if (STEP++ % STEP_PAUSE_AT === 0) await(sleep(0));
+            if (STEP++ % STEP_PAUSE_AT === 0) await sleep(0);
         }
     } else {
         for (let length = 0; TRACING && length <= pathLength; length += DELTA) {
             let p = path.getPointAtLength(length);
             PLANIMETER.tracer.goto(offset.x + p.x, offset.y + p.y);
-            if (STEP++ % STEP_PAUSE_AT === 0) await(sleep(0));
+            if (STEP++ % STEP_PAUSE_AT === 0) await sleep(0);
         }
     }
 
