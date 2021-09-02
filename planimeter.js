@@ -55,14 +55,25 @@ function circle(x, y, r) {
     setFigureAreaText(fig);
 }
 
-function areaPoly(p) {
-    let area = 0;
+function areaCentroidPoly(p) {
+    let area = 0, cx = 0, cy = 0;
 
     for (let i = 0, len = p.length; i < len; i++) {
-        area += p[i][0] * (p[(i + 1) % len][1] - p[(i - 1 + len) % len][1]);
+        let next = (i + 1) % len, prev = (i - 1 + len) % len;
+
+        area += p[i][0] * (p[next][1] - p[prev][1]);
+
+        // https://en.wikipedia.org/wiki/Centroid
+        let t2 = (p[i][0] * p[next][1] - p[next][0] * p[i][1]);
+        cx += (p[i][0] + p[next][0]) * t2;
+        cy += (p[i][1] + p[next][1]) * t2;
     }
 
-    return area / 2;
+    area /= 2;
+    cx /= 6 * area;
+    cy /= 6 * area;
+
+    return {area, cx, cy};
 }
 
 function polygon(params, points) {
@@ -74,11 +85,12 @@ function polygon(params, points) {
 
     let box = fig.show().rbox();
     fig.hide();
-    params['textElement'] = fig.text().x(box.cx - params.x - 50).y(box.cy - params.y);
+    //params['textElement'] = fig.text().x(box.cx - params.x - 50).y(box.cy - params.y);
 
-    let areaPx = areaPoly(points);
+    let ac = areaCentroidPoly(points);
+    params['textElement'] = fig.text().x(ac.cx).y(ac.cy);
 
-    params.areaPx = params.ccw ? 0 - areaPx : areaPx;
+    params.areaPx = params.ccw ? 0 - ac.area : ac.area;
 
     setFigureAreaText(fig, 1);
 }
