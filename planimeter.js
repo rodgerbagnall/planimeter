@@ -56,24 +56,21 @@ function circle(x, y, r) {
 }
 
 function areaCentroidPoly(p) {
-    let area = 0, cx = 0, cy = 0;
+    let area = 0, x = 0, y = 0;
 
     for (let i = 0, len = p.length; i < len; i++) {
-        let next = (i + 1) % len, prev = (i - 1 + len) % len;
+        let j = (i + 1) % len;
 
-        area += p[i][0] * (p[next][1] - p[prev][1]);
+        // https://github.com/mapbox/polylabel/blob/master/polylabel.js
+        let t2 = (p[i][0] * p[j][1] - p[j][0] * p[i][1]);
 
-        // https://en.wikipedia.org/wiki/Centroid
-        let t2 = (p[i][0] * p[next][1] - p[next][0] * p[i][1]);
-        cx += (p[i][0] + p[next][0]) * t2;
-        cy += (p[i][1] + p[next][1]) * t2;
+        x += (p[i][0] + p[j][0]) * t2;
+        y += (p[i][1] + p[j][1]) * t2;
+
+        area += t2;
     }
 
-    area /= 2;
-    cx /= 6 * area;
-    cy /= 6 * area;
-
-    return {area, cx, cy};
+    return {area: area / 2, x: x / (3 * area), y: y / (3 * area)};
 }
 
 function polygon(params, points) {
@@ -81,14 +78,10 @@ function polygon(params, points) {
     let fig = getFig();
     fig.move(params.x, params.y);
     fig.remember('params', params);
-    params['node'] = fig.polygon(points).fill('goldenrod');;
-
-    let box = fig.show().rbox();
-    fig.hide();
-    //params['textElement'] = fig.text().x(box.cx - params.x - 50).y(box.cy - params.y);
+    params['node'] = fig.polygon(points).fill('goldenrod');
 
     let ac = areaCentroidPoly(points);
-    params['textElement'] = fig.text().x(ac.cx).y(ac.cy);
+    params['textElement'] = fig.text().x(ac.x).y(ac.y);
 
     params.areaPx = params.ccw ? 0 - ac.area : ac.area;
 
