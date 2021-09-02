@@ -1,22 +1,7 @@
-var TRACING = false, DELTA = 0.03, STEP = 0, STEP_PAUSE_AT = 60, SCALE = 0.967, UNITS = 'km', CALIBRATE = [];
+var TRACING = false, DELTA = 0.03, STEP = 0, STEP_PAUSE_AT = 60, SCALE = 1, UNITS = 'px';
 
 var DRAW = SVG('#svg');
 DRAW.on(['dblclick', 'dbltap'], event => {event.preventDefault(); TRACING = false;});
-
-function parseInput() {
-    const u =  document.getElementById('set_scale');
-
-    let match = /^([\d.]+)\s*(\S+)/.exec(u.value);
-
-    if (! match) return;
-
-    UNITS = match[2];
-
-    return parseFloat(match[1]);
-}
-
-SCALE = parseInput();
-
 
 function format(n, digits=0) {
     return n.toLocaleString(undefined, {maximumFractionDigits: digits});
@@ -28,7 +13,7 @@ function setFigureAreaText(fig, digits=3) {
     if (! params.areaPx) return;
 
     params.textElement.clear().attr('text-anchor', 'middle')
-        .text(`${params.approx ? '≈ ' : ''}${format(params.areaPx / SCALE, digits)} ${UNITS}²`);
+        .text(`${params.approx ? '≈ ' : ''}${format(params.areaPx, digits)} px²`);
 }
 
 function getFig() {
@@ -257,44 +242,6 @@ class Planimeter {
 
         this.tracer.setText(`traced: ${format(area, 3)} ${UNITS}²`);
     }
-
-    setScale(event) {
-        if (event.shiftKey) {
-            let n = parseInput();
-
-            if (CALIBRATE.length > 2) {
-                CALIBRATE.push(CALIBRATE[0]);
-                let area = 0;
-
-                for (let i = 0; i <= CALIBRATE.length - 2; i++) {
-                    area += (CALIBRATE[i].x - CALIBRATE[i + 1].x) * (CALIBRATE[i].y + CALIBRATE[i + 1].y) / 2;
-                }
-
-                SCALE = area / n;
-            } else if (CALIBRATE.length === 2) {
-                let d = Math.hypot(CALIBRATE[0].x - CALIBRATE[1].x, CALIBRATE[0].y - CALIBRATE[1].y);
-                SCALE = (d / n) ** 2;
-
-            }
-
-            for (let fig of DRAW.find('.figure')) {
-                setFigureAreaText(fig);
-            }
-
-            this.pole.setText(`pole\nzero circle: ${format(this.C / SCALE, 3)} ${UNITS}²`);
-
-            CALIBRATE = [];
-
-            return;
-        }
-
-        if (CALIBRATE.length > 0) {
-            let last = CALIBRATE[CALIBRATE.length - 1];
-            if (last.x === this.tracer.x && last.y === this.tracer.y) return;
-        }
-
-        CALIBRATE.push({x: this.tracer.x, y: this.tracer.y});
-    }
 }
 
 var PLANIMETER = null;
@@ -346,36 +293,7 @@ function keyHandler(event) {
         return;
     }
 
-    if (event.code === 'KeyS') {
-        SCALE = PLANIMETER.areaTracedPx / parseInput();
-
-        for (let fig of DRAW.find('.figure')) {
-            setFigureAreaText(fig);
-        }
-
-        PLANIMETER.pole.setText(`pole\nzero circle: ${format(PLANIMETER.C / SCALE, 3)} ${UNITS}²`);
-
-        return;
-    }
-
-    let dy = dx = 0;
-
-    if      (event.key === 'ArrowUp')    dy = -1;
-    else if (event.key === 'ArrowDown')  dy = +1;
-    else if (event.key === 'ArrowLeft')  dx = -1;
-    else if (event.key === 'ArrowRight') dx = +1;
-    else return;
-
-    if (dx === 0 && dy === 0) return;
-
-    event.preventDefault();
-
-    if (event.shiftKey) {
-        dy *= 10;
-        dx *= 10;
-    }
-
-    PLANIMETER.front.move(dx, dy);
+    arrow(event);
 }
 
 function sleep(ms) {
@@ -451,8 +369,24 @@ path({ccw: true, x: 20, y: 400}, `m 65,129
 
 function toggleMap() {
     let map = document.getElementById('map');
-    visibility = map.style.visibility;
-    map.style.visibility = visibility === 'hidden' ? 'visible' : 'hidden';
+    let visibility = map.style.visibility;
+
+    if (visibility === 'hidden') {
+        map.style.visibility = 'visible';
+        SCALE = parseFloat(map.dataset.scale);
+        UNITS = map.dataset.units;
+
+        let figures = DRAW.find('.figure');
+        for (fig of figures) {
+            fig.hide();
+            let params = fig.remember('params');
+            params.node.off('click');
+        }
+    } else {
+        map.style.visibility = 'hidden';
+        SCALE = 1;
+        UNITS = 'px';
+    }
 }
 
 function toggleFigures() {
@@ -467,6 +401,10 @@ function toggleFigures() {
             params.node.off('click');
         }
     } else {
+        map.style.visibility = 'hidden';
+        SCALE = 1;
+        UNITS = 'px';
+
         for (fig of figures) {
             fig.show();
             let params = fig.remember('params');
@@ -482,6 +420,27 @@ function changeArmLength() {
     PLANIMETER = new Planimeter({tracer, pole});
 }
 
+function arrow(event) {
+    let dy = dx = 0;
+
+    if (! event.key) event.key = `Arrow${event.target.id}`;
+
+    if      (event.key === 'ArrowUp')    dy = -1;
+    else if (event.key === 'ArrowDown')  dy = +1;
+    else if (event.key === 'ArrowLeft')  dx = -1;
+    else if (event.key === 'ArrowRight') dx = +1;
+
+    if (dx === 0 && dy === 0) return;
+
+    event.preventDefault();
+
+    if (event.shiftKey) {
+        dy *= 10;
+        dx *= 10;
+    }
+
+    PLANIMETER.front.move(dx, dy);
+}
 
 document.getElementById('toggle_figures').onclick = toggleFigures;
 
@@ -492,3 +451,27 @@ document.getElementById('zeroise').onclick = function() {PLANIMETER.zeroise()};
 document.getElementById('tracer_arm_length_px').onchange = changeArmLength;
 
 document.getElementById('pole_arm_length_px').onchange = changeArmLength;
+
+var INTERVAL_ID;
+
+let arrows = document.getElementById('arrows');
+
+arrows.addEventListener('mousedown', mouseDown);
+arrows.addEventListener('mouseup',   mouseUp);
+arrows.addEventListener('mouseout',  mouseUp);
+
+function mouseDown(e) {
+    arrow(e);
+    clearInterval(INTERVAL_ID);
+    INTERVAL_ID = setInterval(longPause, 700, e);
+}
+
+function mouseUp() {
+    clearInterval(INTERVAL_ID);
+}
+
+function longPause(e) {
+    clearInterval(INTERVAL_ID);
+    arrow(e);
+    INTERVAL_ID = setInterval(arrow, 50, e);
+}

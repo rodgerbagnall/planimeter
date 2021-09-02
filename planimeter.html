@@ -11,7 +11,13 @@
 		<button id="toggle_map">map</button>
 		<button id="zeroise">zeroise</button>
 
-		<input id="set_scale" type="text" value="0.967 km"/>
+		<div id="arrows">
+			<button id="Up"   >🡹</button><!-- unicode 14879 -->
+			<button id="Right">🡺</button><!-- unicode 1487a -->
+			<button id="Down" >🡻</button><!-- unicode 1487b -->
+			<button id="Left" >🡸</button><!-- unicode 14878 -->
+		</div>
+
 		<p>Tracer arm length (px) <input id="tracer_arm_length_px" value="170" type="text" /></p>
 		<p>Pole arm length (px) <input id="pole_arm_length_px" value="200" type="text" /></p>
 
@@ -20,7 +26,7 @@
 	</div>
 
 	<svg id="svg" width="100000" height="100000">
-		<image id="map" width="525" height="650" href="https://upload.wikimedia.org/wikipedia/commons/d/d5/England_Regions_-_Labelled.svg" />
+		<image id="map" width="525" height="650" data-scale="0.967" data-units="km" href="https://upload.wikimedia.org/wikipedia/commons/d/d5/England_Regions_-_Labelled.svg" />
 	</svg>
 </body>
 
