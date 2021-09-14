@@ -60,7 +60,7 @@ Enter the known area and the units in the text box. Make sure the text box doesn
 Trace the area and press s to set the scale.
 
 
-View the page at: https://www.ecclesman.com/p/planimeter.html
+View the page at: https://www.ecclesman.com/planimeter
 
 # References
 * http://whistleralley.com/planimeter/planimeter.htm

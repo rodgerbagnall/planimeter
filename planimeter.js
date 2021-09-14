@@ -371,45 +371,44 @@ function toggleMap() {
     let map = document.getElementById('map');
     let visibility = map.style.visibility;
 
-    if (visibility === 'hidden') {
-        map.style.visibility = 'visible';
-        SCALE = parseFloat(map.dataset.scale);
-        UNITS = map.dataset.units;
-
-        let figures = DRAW.find('.figure');
-        for (fig of figures) {
-            fig.hide();
-            let params = fig.remember('params');
-            params.node.off('click');
-        }
-    } else {
+    if (visibility !== 'hidden') {
         map.style.visibility = 'hidden';
         SCALE = 1;
         UNITS = 'px';
+        return;
+    }
+
+    map.style.visibility = 'visible';
+    SCALE = parseFloat(map.dataset.scale);
+    UNITS = map.dataset.units;
+
+    for (fig of DRAW.find('.figure')) {
+        fig.hide().remember('params').node.off('click');
     }
 }
 
 function toggleFigures() {
     let figures = DRAW.find('.figure');
+    console.log(figures.some(x => x.visible()))
 
     if (figures.length === 0) return;
 
-    if (figures[0].visible()) {
+    if (figures.some(f => f.visible())) {
         for (fig of figures) {
-            fig.hide();
-            let params = fig.remember('params');
-            params.node.off('click');
+            fig.hide().remember('params').node.off('click');
         }
-    } else {
-        map.style.visibility = 'hidden';
-        SCALE = 1;
-        UNITS = 'px';
+        return;
+    }
 
-        for (fig of figures) {
-            fig.show();
-            let params = fig.remember('params');
-            params.node.on('click', function() {autoTrace(params)});
-        }
+    let map = document.getElementById('map');
+    map.style.visibility = 'hidden';
+    SCALE = 1;
+    UNITS = 'px';
+
+    for (fig of figures) {
+        fig.show();
+        let params = fig.remember('params');
+        params.node.on('click', function() {autoTrace(params)});
     }
 }
 
@@ -460,18 +459,13 @@ arrows.addEventListener('mousedown', mouseDown);
 arrows.addEventListener('mouseup',   mouseUp);
 arrows.addEventListener('mouseout',  mouseUp);
 
-function mouseDown(e) {
-    arrow(e);
+function mouseDown(event) {
     clearInterval(INTERVAL_ID);
-    INTERVAL_ID = setInterval(longPause, 700, e);
+    arrow(event);
+    INTERVAL_ID = setInterval(arrow, 50, event);
 }
 
 function mouseUp() {
     clearInterval(INTERVAL_ID);
 }
 
-function longPause(e) {
-    clearInterval(INTERVAL_ID);
-    arrow(e);
-    INTERVAL_ID = setInterval(arrow, 50, e);
-}
