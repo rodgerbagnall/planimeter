@@ -30,8 +30,9 @@ function rect(x, y, w, h) {
     setFigureAreaText(fig);
 }
 
-function circle(x, y, r) {
+function circle(x, y, r, id=null) {
     let fig = getFig();
+    if (id) fig.id(id);
     let node = fig.circle(2 * r).fill('goldenrod');
     let areaPx = Math.PI * r ** 2;
     let textElement = fig.text().x(r).y(r);
@@ -70,7 +71,7 @@ function polygon(params, points) {
 
     params.areaPx = params.ccw ? 0 - ac.area : ac.area;
 
-    setFigureAreaText(fig, 1);
+    setFigureAreaText(fig, 2);
 }
 
 async function path(params, pathString) {
@@ -96,25 +97,27 @@ async function path(params, pathString) {
 
     params.areaPx = params.ccw ? 0 - areaPx : areaPx;
 
-    setFigureAreaText(fig, 1);
+    setFigureAreaText(fig, 2);
 }
 
 class Circle {
-    constructor(x, y, r, text, fill, planimeter, zeroiseOnMove=false) {
-        this.x = x;
-        this.y = y;
-        this.r = r;
-        this.planimeter = planimeter;
-        this.zeroiseOnMove = zeroiseOnMove;
+    constructor(options) {
+        options = Object.assign({id: null, zeroiseOnMove: false}, options);
+
+        this.x = options.x;
+        this.y = options.y;
+        this.r = options.r;
+        this.planimeter = options.planimeter;
+        this.zeroiseOnMove = options.zeroiseOnMove;
 
         this.g = DRAW.nested();
 
-        this.g.circle(2 * r).center(r, r).fill(fill).opacity(0.3).attr('tab-index', 0);
-        this.g.circle(6).center(r, r).fill('#f00').opacity(0.3);
+        this.g.circle(2 * this.r).center(this.r, this.r).fill(options.fill).opacity(0.3).attr('tab-index', 0).id(options.id);
+        this.g.circle(6).center(this.r, this.r).fill('#f00').opacity(0.3);
 
-        this.textElement = this.g.text(text).x(r + 5).y(r - 15);
+        this.textElement = this.g.text(options.text).x(this.r + 5).y(this.r - 15);
 
-        this.g.move(x - r, y - r);
+        this.g.move(options.x - this.r, options.y - this.r);
 
         this.g.draggable().on('dragmove', event => {
             this.x = this.g.x() + this.r;
@@ -141,14 +144,14 @@ class Circle {
 
 class Planimeter {
     constructor(armLengthsPx) {
-        //armLengthsPx = Object.assign({pole: 220, tracer: 200}, armLengthsPx);
-
         this.areaTracedPx = 0;
         this.angleTurnedRadians = 0;
 
-        this.tracer = new Circle(400, 550, armLengthsPx.tracer, 'tracer', '#aad', this);
+        let tracerOptions = {x: 400, y: 550, r: armLengthsPx.tracer, text: 'tracer', fill: '#aad', planimeter: this};
+        this.tracer = new Circle(tracerOptions);
 
-        this.pole   = new Circle(200 - armLengthsPx.pole, 200, armLengthsPx.pole, 'pole', '#ada', this, true);
+        let poleOptions = {x: 200 - armLengthsPx.pole, y: 200, r: armLengthsPx.pole, text: 'pole', fill: '#ada', planimeter: this, zeroiseOnMove: true};
+        this.pole   = new Circle(poleOptions);
 
         this.C = Math.PI * (this.pole.r ** 2 + this.tracer.r ** 2);
         this.pole.setText(`pole\nzero circle: ${format(this.C)} px²`);
@@ -161,6 +164,10 @@ class Planimeter {
         this.tracer.g.fire('dragmove');
 
         this.front = this.tracer;
+
+        let zcr = Math.hypot(this.pole.r, this.tracer.r);
+
+        circle(this.pole.x - zcr, this.pole.y - zcr, zcr, 'zc');
     }
 
     clear() {
@@ -241,6 +248,10 @@ class Planimeter {
         if (this.angleTurnedRadians > 2 * Math.PI * 0.999) area += this.C / SCALE;
 
         this.tracer.setText(`traced: ${format(area, 3)} ${UNITS}²`);
+    }
+
+    zeroCircle() {
+
     }
 }
 
@@ -334,24 +345,13 @@ rect(50, 150, 500, 510)
 
 rect(450, 200, 100, 200)
 
-rect(200, 450, 200, 100)
+rect(230, 450, 200, 100)
 
 circle(600, 110, 100)
 
 polygon({x: 500, y: 410}, [[0, 0], [150, 0], [150, 140], [140, 140], [140, 70], [0, 70]])
 
 polygon({x: 0, y: 150}, [[200, 150], [170, 200], [200, 220], [100, 210], [50, 200], [0, 150], [100, 0], [150, 50]]);
-
-path({ccw: true, x: 0, y: 0}, `M 137 222
-    C 124 222  120 258  120 265
-    C 120 289  115 315  129 325
-    C 148 340  167 344  180 347
-    C 210 355  228 359  246 360
-    C 281 362  302 362  322 361
-    C 357 359  374 351  391 347
-    C 409 343  427 326  432 313
-    C 441 292  458 282  464 266
-    Z`);
 
 path({ccw: true, x: 20, y: 400}, `m 65,129
     c 6,-13 2,-21 9,-28
@@ -366,6 +366,31 @@ path({ccw: true, x: 20, y: 400}, `m 65,129
     108,56 83,64 67,79 57,90 53,106 52,121
     c -1,7 6,20 12,9
     Z`);
+
+polygon({x: 200, y: 10}, [[10.167,80.471], [14.298,78.685], [20.219,76.124], [32.197,71.350],
+    [39.787,68.709], [56.264,63.518], [61.920,61.225], [70.873,59.219], [98.322,57.729],
+    [101.805,57.756], [110.049,58.245], [120.866,58.093], [129.823,54.489], [137.052,45.146],
+    [144.985,32.797], [151.422,27.168], [156.727,23.814], [163.819,18.285], [169.609,13.614],
+    [178.510,5.137], [182.386,0.000], [183.395,12.803], [186.999,25.000], [186.525,29.922],
+    [178.372,34.351], [173.213,36.896], [167.911,38.576], [166.271,45.915], [165.840,51.327],
+    [163.517,67.298], [161.787,75.360], [161.725,82.532], [161.344,88.819], [161.071,97.266],
+    [161.406,103.941], [163.462,113.204], [166.464,114.503], [172.799,113.759], [176.444,112.287],
+    [181.101,114.030], [191.756,114.573], [197.567,117.233], [204.987,119.373], [209.017,120.900],
+    [215.779,124.469], [219.389,125.889], [224.558,128.631], [226.371,128.806], [228.026,130.846],
+    [223.602,137.180], [218.241,145.466], [209.667,154.973], [204.865,160.104], [203.589,162.994],
+    [202.194,165.222], [197.421,173.141], [189.280,182.089], [186.571,184.866], [175.974,197.587],
+    [178.643,199.749], [189.239,208.707], [191.826,212.024], [203.171,220.330], [206.015,222.751],
+    [206.018,227.140], [203.957,231.034], [198.615,237.648], [192.165,248.069], [186.701,255.157],
+    [181.280,256.930], [174.177,256.570], [159.408,258.349], [148.615,259.132], [139.629,259.119],
+    [129.808,258.384], [122.986,257.248], [114.710,250.905], [105.963,243.477], [97.701,237.221],
+    [90.448,233.640], [83.717,234.426], [80.869,233.316], [73.819,229.251], [66.123,225.657],
+    [60.084,221.495], [58.262,219.103], [55.651,216.296], [51.323,214.250], [45.116,209.939],
+    [38.438,206.904], [32.353,204.370], [32.518,195.355], [34.191,191.699], [29.703,188.551],
+    [30.263,186.049], [31.622,180.403], [27.251,177.890], [22.177,177.255], [17.186,175.226],
+    [9.568,171.774], [3.742,168.789], [2.649,166.523], [1.134,163.051], [0.000,158.474], [0.950,156.196],
+    [2.892,150.614], [4.271,145.916], [8.259,145.396], [16.846,144.945], [23.056,144.650], [28.692,144.205],
+    [27.802,139.253], [26.598,134.994], [25.026,129.436], [22.856,120.737], [22.548,118.233], [21.767,115.275],
+    [21.167,112.297], [17.468,99.609], [15.110,91.071]]);
 
 function toggleMap() {
     let map = document.getElementById('map');
@@ -389,7 +414,6 @@ function toggleMap() {
 
 function toggleFigures() {
     let figures = DRAW.find('.figure');
-    console.log(figures.some(x => x.visible()))
 
     if (figures.length === 0) return;
 
@@ -436,6 +460,11 @@ function arrow(event) {
     if (event.shiftKey) {
         dy *= 10;
         dx *= 10;
+    }
+
+    if (event.ctrlKey) {
+        dy /= 5;
+        dx /= 5;
     }
 
     PLANIMETER.front.move(dx, dy);
